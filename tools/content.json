@@ -1,0 +1,586 @@
+{
+ "kana": [
+  {
+   "h": "あ",
+   "r": "a",
+   "k": "ア'",
+   "word": "あり",
+   "wordText": "蟻",
+   "emoji": "🐜",
+   "meaning": "ant",
+   "idx": 0
+  },
+  {
+   "h": "い",
+   "r": "i",
+   "k": "イ'",
+   "word": "いぬ",
+   "wordText": "犬",
+   "emoji": "🐕",
+   "meaning": "dog",
+   "idx": 0
+  },
+  {
+   "h": "う",
+   "r": "u",
+   "k": "ウ'",
+   "word": "うさぎ",
+   "wordText": "うさぎ",
+   "emoji": "🐇",
+   "meaning": "rabbit",
+   "idx": 0
+  },
+  {
+   "h": "え",
+   "r": "e",
+   "k": "エ'",
+   "word": "えんぴつ",
+   "wordText": "鉛筆",
+   "emoji": "✏️",
+   "meaning": "pencil",
+   "idx": 0
+  },
+  {
+   "h": "お",
+   "r": "o",
+   "k": "オ'",
+   "word": "おにぎり",
+   "wordText": "おにぎり",
+   "emoji": "🍙",
+   "meaning": "rice ball",
+   "idx": 0
+  },
+  {
+   "h": "か",
+   "r": "ka",
+   "k": "カ'",
+   "word": "かさ",
+   "wordText": "傘",
+   "emoji": "☂️",
+   "meaning": "umbrella",
+   "idx": 0
+  },
+  {
+   "h": "き",
+   "r": "ki",
+   "k": "キ'",
+   "word": "きつね",
+   "wordText": "狐",
+   "emoji": "🦊",
+   "meaning": "fox",
+   "idx": 0
+  },
+  {
+   "h": "く",
+   "r": "ku",
+   "k": "ク'",
+   "word": "くま",
+   "wordText": "熊",
+   "emoji": "🐻",
+   "meaning": "bear",
+   "idx": 0
+  },
+  {
+   "h": "け",
+   "r": "ke",
+   "k": "ケ'",
+   "word": "けむし",
+   "wordText": "毛虫",
+   "emoji": "🐛",
+   "meaning": "caterpillar",
+   "idx": 0
+  },
+  {
+   "h": "こ",
+   "r": "ko",
+   "k": "コ'",
+   "word": "こいのぼり",
+   "wordText": "鯉のぼり",
+   "emoji": "🎏",
+   "meaning": "carp streamer",
+   "idx": 0
+  },
+  {
+   "h": "さ",
+   "r": "sa",
+   "k": "サ'",
+   "word": "さかな",
+   "wordText": "魚",
+   "emoji": "🐟",
+   "meaning": "fish",
+   "idx": 0
+  },
+  {
+   "h": "し",
+   "r": "shi",
+   "k": "シ'",
+   "word": "しか",
+   "wordText": "鹿",
+   "emoji": "🦌",
+   "meaning": "deer",
+   "idx": 0
+  },
+  {
+   "h": "す",
+   "r": "su",
+   "k": "ス'",
+   "word": "すいか",
+   "wordText": "すいか",
+   "emoji": "🍉",
+   "meaning": "watermelon",
+   "idx": 0
+  },
+  {
+   "h": "せ",
+   "r": "se",
+   "k": "セ'",
+   "word": "せんせい",
+   "wordText": "先生",
+   "emoji": "🧑‍🏫",
+   "meaning": "teacher",
+   "idx": 0
+  },
+  {
+   "h": "そ",
+   "r": "so",
+   "k": "ソ'",
+   "word": "そり",
+   "wordText": "そり",
+   "emoji": "🛷",
+   "meaning": "sled",
+   "idx": 0
+  },
+  {
+   "h": "た",
+   "r": "ta",
+   "k": "タ'",
+   "word": "たまご",
+   "wordText": "卵",
+   "emoji": "🥚",
+   "meaning": "egg",
+   "idx": 0
+  },
+  {
+   "h": "ち",
+   "r": "chi",
+   "k": "チ'",
+   "word": "ちょうちょ",
+   "wordText": "ちょうちょ",
+   "emoji": "🦋",
+   "meaning": "butterfly",
+   "idx": 0
+  },
+  {
+   "h": "つ",
+   "r": "tsu",
+   "k": "ツ'",
+   "word": "つき",
+   "wordText": "月",
+   "emoji": "🌙",
+   "meaning": "moon",
+   "idx": 0
+  },
+  {
+   "h": "て",
+   "r": "te",
+   "k": "テ'",
+   "word": "て",
+   "wordText": "手",
+   "emoji": "✋",
+   "meaning": "hand",
+   "idx": 0
+  },
+  {
+   "h": "と",
+   "r": "to",
+   "k": "ト'",
+   "word": "とり",
+   "wordText": "鳥",
+   "emoji": "🐦",
+   "meaning": "bird",
+   "idx": 0
+  },
+  {
+   "h": "な",
+   "r": "na",
+   "k": "ナ'",
+   "word": "なす",
+   "wordText": "なす",
+   "emoji": "🍆",
+   "meaning": "eggplant",
+   "idx": 0
+  },
+  {
+   "h": "に",
+   "r": "ni",
+   "k": "ニ'",
+   "word": "にんじん",
+   "wordText": "人参",
+   "emoji": "🥕",
+   "meaning": "carrot",
+   "idx": 0
+  },
+  {
+   "h": "ぬ",
+   "r": "nu",
+   "k": "ヌ'",
+   "word": "ぬいぐるみ",
+   "wordText": "ぬいぐるみ",
+   "emoji": "🧸",
+   "meaning": "stuffed toy",
+   "idx": 0
+  },
+  {
+   "h": "ね",
+   "r": "ne",
+   "k": "ネ'",
+   "word": "ねこ",
+   "wordText": "猫",
+   "emoji": "🐈",
+   "meaning": "cat",
+   "idx": 0
+  },
+  {
+   "h": "の",
+   "r": "no",
+   "k": "ノ'",
+   "word": "のこぎり",
+   "wordText": "のこぎり",
+   "emoji": "🪚",
+   "meaning": "saw",
+   "idx": 0
+  },
+  {
+   "h": "は",
+   "r": "ha",
+   "k": "ハ'",
+   "word": "はな",
+   "wordText": "花",
+   "emoji": "🌸",
+   "meaning": "flower",
+   "idx": 0
+  },
+  {
+   "h": "ひ",
+   "r": "hi",
+   "k": "ヒ'",
+   "word": "ひこうき",
+   "wordText": "飛行機",
+   "emoji": "✈️",
+   "meaning": "airplane",
+   "idx": 0
+  },
+  {
+   "h": "ふ",
+   "r": "fu",
+   "k": "フ'",
+   "word": "ふね",
+   "wordText": "船",
+   "emoji": "🚢",
+   "meaning": "ship",
+   "idx": 0
+  },
+  {
+   "h": "へ",
+   "r": "he",
+   "k": "ヘ'",
+   "word": "へび",
+   "wordText": "蛇",
+   "emoji": "🐍",
+   "meaning": "snake",
+   "idx": 0
+  },
+  {
+   "h": "ほ",
+   "r": "ho",
+   "k": "ホ'",
+   "word": "ほし",
+   "wordText": "星",
+   "emoji": "⭐",
+   "meaning": "star",
+   "idx": 0
+  },
+  {
+   "h": "ま",
+   "r": "ma",
+   "k": "マ'",
+   "word": "まど",
+   "wordText": "窓",
+   "emoji": "🪟",
+   "meaning": "window",
+   "idx": 0
+  },
+  {
+   "h": "み",
+   "r": "mi",
+   "k": "ミ'",
+   "word": "みかん",
+   "wordText": "みかん",
+   "emoji": "🍊",
+   "meaning": "mandarin",
+   "idx": 0
+  },
+  {
+   "h": "む",
+   "r": "mu",
+   "k": "ム'",
+   "word": "むし",
+   "wordText": "虫",
+   "emoji": "🐞",
+   "meaning": "bug",
+   "idx": 0
+  },
+  {
+   "h": "め",
+   "r": "me",
+   "k": "メ'",
+   "word": "め",
+   "wordText": "目",
+   "emoji": "👁️",
+   "meaning": "eye",
+   "idx": 0
+  },
+  {
+   "h": "も",
+   "r": "mo",
+   "k": "モ'",
+   "word": "もも",
+   "wordText": "桃",
+   "emoji": "🍑",
+   "meaning": "peach",
+   "idx": 0
+  },
+  {
+   "h": "や",
+   "r": "ya",
+   "k": "ヤ'",
+   "word": "やま",
+   "wordText": "山",
+   "emoji": "⛰️",
+   "meaning": "mountain",
+   "idx": 0
+  },
+  {
+   "h": "ゆ",
+   "r": "yu",
+   "k": "ユ'",
+   "word": "ゆき",
+   "wordText": "雪",
+   "emoji": "❄️",
+   "meaning": "snow",
+   "idx": 0
+  },
+  {
+   "h": "よ",
+   "r": "yo",
+   "k": "ヨ'",
+   "word": "よる",
+   "wordText": "夜",
+   "emoji": "🌃",
+   "meaning": "night",
+   "idx": 0
+  },
+  {
+   "h": "ら",
+   "r": "ra",
+   "k": "ラ'",
+   "word": "らっぱ",
+   "wordText": "らっぱ",
+   "emoji": "🎺",
+   "meaning": "trumpet",
+   "idx": 0
+  },
+  {
+   "h": "り",
+   "r": "ri",
+   "k": "リ'",
+   "word": "りんご",
+   "wordText": "りんご",
+   "emoji": "🍎",
+   "meaning": "apple",
+   "idx": 0
+  },
+  {
+   "h": "る",
+   "r": "ru",
+   "k": "ル'",
+   "word": "るす",
+   "wordText": "留守",
+   "emoji": "🏠",
+   "meaning": "not home",
+   "idx": 0
+  },
+  {
+   "h": "れ",
+   "r": "re",
+   "k": "レ'",
+   "word": "れもん",
+   "wordText": "レモン",
+   "emoji": "🍋",
+   "meaning": "lemon",
+   "idx": 0
+  },
+  {
+   "h": "ろ",
+   "r": "ro",
+   "k": "ロ'",
+   "word": "ろうそく",
+   "wordText": "ろうそく",
+   "emoji": "🕯️",
+   "meaning": "candle",
+   "idx": 0
+  },
+  {
+   "h": "わ",
+   "r": "wa",
+   "k": "ワ'",
+   "word": "わに",
+   "wordText": "ワニ",
+   "emoji": "🐊",
+   "meaning": "crocodile",
+   "idx": 0
+  },
+  {
+   "h": "を",
+   "r": "wo",
+   "k": "オ'",
+   "word": "てを あらう",
+   "wordText": "手を洗う",
+   "emoji": "🧼",
+   "meaning": "wash hands",
+   "idx": 1
+  },
+  {
+   "h": "ん",
+   "r": "n",
+   "k": "ン'",
+   "word": "ほん",
+   "wordText": "本",
+   "emoji": "📖",
+   "meaning": "book",
+   "idx": 1
+  }
+ ],
+ "rows": [
+  {
+   "id": "a",
+   "label": "あ",
+   "size": 5
+  },
+  {
+   "id": "ka",
+   "label": "か",
+   "size": 5
+  },
+  {
+   "id": "sa",
+   "label": "さ",
+   "size": 5
+  },
+  {
+   "id": "ta",
+   "label": "た",
+   "size": 5
+  },
+  {
+   "id": "na",
+   "label": "な",
+   "size": 5
+  },
+  {
+   "id": "ha",
+   "label": "は",
+   "size": 5
+  },
+  {
+   "id": "ma",
+   "label": "ま",
+   "size": 5
+  },
+  {
+   "id": "ya",
+   "label": "や",
+   "size": 3
+  },
+  {
+   "id": "ra",
+   "label": "ら",
+   "size": 5
+  },
+  {
+   "id": "wa",
+   "label": "わ",
+   "size": 3
+  }
+ ],
+ "voice": [
+  {
+   "id": "sugoi",
+   "t": "すごい！"
+  },
+  {
+   "id": "yattane",
+   "t": "やったね！"
+  },
+  {
+   "id": "jouzu",
+   "t": "じょうず！"
+  },
+  {
+   "id": "iine",
+   "t": "いいね！"
+  },
+  {
+   "id": "pittari",
+   "t": "ぴったり！"
+  },
+  {
+   "id": "mouikkai",
+   "t": "もう いっかい！"
+  },
+  {
+   "id": "dorekana",
+   "t": "どれかな？"
+  },
+  {
+   "id": "kaitemiyou",
+   "t": "かいて みよう！"
+  },
+  {
+   "id": "atarashii",
+   "t": "あたらしい ひらがなだよ！"
+  },
+  {
+   "id": "trophy",
+   "t": "トロフィー ゲット！"
+  },
+  {
+   "id": "ganbatta",
+   "t": "きょうも がんばったね！"
+  },
+  {
+   "id": "streak5",
+   "t": "ごかい れんぞく！"
+  },
+  {
+   "id": "streak10",
+   "t": "じゅっかい れんぞく！"
+  },
+  {
+   "id": "totta",
+   "t": "とった！"
+  },
+  {
+   "id": "konnichiwa",
+   "t": "こんにちは！"
+  },
+  {
+   "id": "yokudekimashita",
+   "t": "よく できました！"
+  },
+  {
+   "id": "oyasumi",
+   "t": "おつかれさま！ また あしたね！"
+  }
+ ]
+}
