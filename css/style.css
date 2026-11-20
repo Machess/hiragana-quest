@@ -503,3 +503,106 @@ details.pp .avatar { font-size: 32px; font-family: var(--emoji); }
 .game-grid.g10 .game-tile { padding: 22px 10px; }
 .game-grid.g10 .game-tile .emoji { font-size: 58px; }
 .game-grid.g10 .game-tile .gname { font-size: 21px; }
+
+/* ---------- Path, chart, character card, Dojo, summary ---------- */
+.kana-tile { font-family: var(--kana) !important; font-weight: 600; color: var(--red); }
+.adv-preview { display: flex; gap: 18px; font-size: 20px; color: var(--ink-soft); min-height: 30px; }
+.adv-preview b { color: var(--ink); font-size: 26px; letter-spacing: .08em; }
+.step-toast { display: flex; align-items: center; gap: 10px; background: var(--card); color: var(--ink); font-weight: 700; font-size: 28px; padding: 10px 28px; border-radius: 999px; box-shadow: var(--shadow); white-space: nowrap; border: 4px solid var(--matcha); }
+.step-toast .kana { font-size: 40px; color: var(--red); }
+
+.path { display: flex; gap: 8px; align-items: flex-start; }
+.path-stone { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 78px; }
+.path-stone .path-icon { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: var(--paper-2); opacity: .45; }
+.path-stone.done .path-icon { background: #e3f0d9; opacity: 1; box-shadow: inset 0 0 0 4px var(--matcha); }
+.path-stone.here .path-icon { background: var(--card); opacity: 1; box-shadow: inset 0 0 0 4px var(--red), var(--shadow); }
+.path-name { font-size: 16px; font-weight: 700; color: var(--ink-soft); text-align: center; line-height: 1.1; }
+.path-stone.here .path-name { color: var(--red); }
+.path-dots { display: flex; gap: 4px; }
+.path-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--paper-2); }
+.path-dots i.on { background: var(--red); }
+.path.compact .path-stone { width: 56px; }
+.path.compact .path-icon { width: 50px; height: 50px; font-size: 25px; }
+.path-stone.fresh .path-icon { animation: stonepop .6s cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(.4s + var(--d)); }
+@keyframes stonepop { 0% { transform: scale(.6); opacity: .4; } 100% { transform: scale(1); opacity: 1; } }
+
+.chart { display: flex; gap: 8px; justify-content: center; }
+.chart-col { display: flex; flex-direction: column; gap: 8px; }
+.chart-head { height: 42px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 26px; display: grid; place-items: center; }
+.chart-head.locked { background: #b9b5c9; }
+.chart-cell {
+  position: relative; border-radius: 16px; display: grid; place-items: center; background: var(--card); box-shadow: var(--shadow);
+  background-image: conic-gradient(var(--matcha) calc(var(--prog) * 360deg), transparent 0); background-size: 100% 100%;
+}
+.chart-cell::before { content: ''; position: absolute; inset: 6px; border-radius: 11px; background: var(--card); }
+.chart-cell .kana { position: relative; }
+.chart-cell.empty { background: none; box-shadow: none; }
+.chart-cell.empty::before { display: none; }
+.chart-cell.unmet { background: rgba(255,253,247,.55); box-shadow: none; border: 3px dashed var(--line); }
+.chart-cell.unmet::before { display: none; }
+.chart-cell.unmet .kana { opacity: .3; }
+.chart-cell.mastered { background-image: none; background-color: var(--gold); }
+.chart-cell.sel { outline: 5px solid var(--red); outline-offset: 2px; }
+.chart-star { position: absolute; right: 2px; top: 0; font-size: 18px; }
+.chart-lg .chart-col { width: 104px; }
+.chart-lg .chart-cell { height: 104px; font-size: 64px; }
+.chart-sm .chart-col { width: 70px; }
+.chart-sm .chart-head { height: 36px; font-size: 22px; }
+.chart-sm .chart-cell { height: 68px; font-size: 42px; border-radius: 12px; }
+.chart-sm .chart-cell::before { inset: 4px; border-radius: 9px; }
+.chart-count { margin-left: auto; font-size: 22px; font-weight: 700; color: var(--ink-soft); }
+.screen.chart .hint-text.center { text-align: center; }
+
+.cc-body { flex: 1; display: flex; gap: 40px; align-items: center; justify-content: center; }
+.cc-left { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.cc-big { width: 380px; height: 380px; background: var(--card); border-radius: 32px; box-shadow: var(--shadow); padding: 18px; }
+.cc-right { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+.cc-top { display: flex; gap: 24px; align-items: center; }
+.cc-word { display: flex; align-items: center; gap: 14px; background: var(--card); border-radius: var(--r); padding: 14px 24px; box-shadow: var(--shadow); }
+.cc-word .emoji { font-size: 64px; }
+.cc-word .jp { font-size: 44px; }
+.cc-word .hl { color: var(--red); }
+.cc-trophy { width: 90px; }
+.cc-now { font-size: 26px; font-weight: 700; }
+.cc-actions { display: flex; gap: 16px; align-items: center; margin-top: 6px; }
+
+.screen.dojo { gap: 12px; }
+.screen.dojo .topline { min-height: 56px; }
+.dojo-sel { margin-left: 16px; font-size: 22px; color: var(--ink-soft); }
+.dojo-sel b { color: var(--red); font-size: 30px; letter-spacing: .06em; }
+.dojo-top { display: flex; gap: 24px; align-items: flex-start; }
+.dojo-chips { display: flex; flex-direction: column; gap: 12px; padding-top: 44px; }
+.chip { min-height: 60px; padding: 10px 22px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow); font-weight: 700; font-size: 21px; text-align: left; }
+.chip:active { transform: translateY(2px); }
+.dojo-games { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+.dojo-tile { min-height: 104px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 18px; padding: 8px 4px; text-align: center; line-height: 1.15; }
+.dojo-tile .emoji { font-size: 40px; }
+.dojo-tile.off { opacity: .35; }
+.dojo-tile:active:not(:disabled) { transform: translateY(3px); }
+.screen.dojo-end { align-items: center; justify-content: center; gap: 22px; }
+
+.screen.summary { align-items: center; justify-content: center; gap: 24px; }
+.sum-list { display: flex; flex-direction: column; gap: 14px; }
+.sum-row { display: flex; align-items: center; gap: 20px; background: var(--card); border-radius: 22px; padding: 10px 22px; box-shadow: var(--shadow); }
+.sum-kana { font-size: 54px; width: 64px; text-align: center; color: var(--ink); }
+
+/* Copy mode model card, Dictation ear, Read & Match */
+.model-card { width: 250px; height: 250px; background: var(--card); border-radius: 26px; box-shadow: var(--shadow); padding: 18px; border: 4px solid var(--line); }
+.dict-ear { width: 210px; height: 190px; border-radius: 30px; background: var(--card); box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 22px; }
+.dict-ear .emoji { font-size: 100px; }
+.blank.big { width: 110px; height: 110px; font-size: 60px; border-radius: 22px; }
+.blank.big.filled { font-size: 84px; }
+.view.readmatch { gap: 60px; }
+.rm-left { display: flex; flex-direction: column; align-items: center; gap: 26px; }
+.rm-word { min-width: 360px; padding: 30px 40px; background: var(--card); border-radius: 30px; box-shadow: var(--shadow); font-size: 110px; text-align: center; letter-spacing: .08em; line-height: 1.1; }
+.rm-word.hinted { box-shadow: 0 0 0 6px var(--sakura), var(--shadow); }
+.rm-mochi { display: flex; align-items: center; gap: 14px; }
+.rm-mochi .bubble { max-width: 300px; }
+.rm-pics { display: flex; flex-direction: column; gap: 18px; }
+.rm-pic { position: relative; width: 200px; height: 170px; background: var(--card); border-radius: 26px; box-shadow: var(--shadow); display: grid; place-items: center; transition: opacity .3s, transform .3s; }
+.rm-pic .emoji { font-size: 100px; }
+.rm-pic::after { content: ''; position: absolute; inset: 0; border-radius: 26px; border: 6px solid var(--matcha); background: rgba(127,176,105,.15); opacity: 0; transition: opacity .2s; }
+.rm-pic.yes::after { opacity: 1; }
+.rm-pic.yes { animation: popin .4s; }
+.rm-pic.nope { opacity: .3; transform: scale(.94); }
+.toast:has(.step-toast) { top: 190px; }

@@ -2,7 +2,7 @@
 // and the adventure planner that strings games together.
 import { el, mochi, petals, icon, wait, toast, overlay, keepAwake } from './ui.js';
 import * as A from './audio.js';
-import { introduced, newCharsForSession, updateTrophies, playableWords } from './learn.js';
+import { introduced, newCharsForSession, updateTrophies, playableWords, onStepUp, stepOf, S, STEPS, MASTERED } from './learn.js';
 import { save } from './store.js';
 
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -18,6 +18,8 @@ export class Session {
     this.onExit = onExit;
     this.steps = steps;
     this.step = 0;
+    this.climbed = [];   // path steps climbed this session: { h, from, to }
+    onStepUp((e) => this.stepUp(e));
 
     this.mini = mochi('idle', 'sm');
     this.stones = el('div', { class: 'stones' });
@@ -64,12 +66,25 @@ export class Session {
       this.mini.setMood('happy');
       this.mini.hop();
       setTimeout(() => this.mini.setMood('idle'), 1600);
-      setTimeout(() => A.say(big ? 'streak10' : 'streak5'), 350);
+      A.say(big ? 'streak10' : 'streak5', { gap: 700 });
       toast(el('span', { class: 'streak-toast' }, `${this.streak} in a row!`), 1600);
     } else {
       A.chime(0);
     }
   }
+  // A character moved one stone along its path: a small, calm moment.
+  stepUp({ h, from, to }) {
+    this.climbed.push({ h, from, to });
+    const st = STEPS[to];
+    const label = to >= MASTERED ? 'Mastered!' : `${st.icon} ${st.name}`;
+    setTimeout(() => {
+      A.chime(1);
+      toast(el('span', { class: 'step-toast' }, el('span', { class: 'kana' }, h), ' → ', label), 2200);
+      this.mini.setMood('happy'); this.mini.hop();
+      setTimeout(() => this.mini.setMood('idle'), 1600);
+    }, 700);
+  }
+  end() { onStepUp(null); }
   miss(h) {
     // Quiet reset. No sad sounds, no "streak lost" message.
     this.streak = 0;
@@ -84,7 +99,7 @@ export class Session {
         el('p', { class: 'modal-text' }, 'Want to stop here?'),
         el('div', { class: 'row-btns' },
           el('button', { class: 'btn soft', onclick: () => box.remove() }, 'Keep playing'),
-          el('button', { class: 'btn', onclick: () => { box.remove(); this.exited = true; this.onExit && this.onExit(); } }, 'Stop'),
+          el('button', { class: 'btn', onclick: () => { box.remove(); this.exited = true; this.end(); this.onExit && this.onExit(); } }, 'Stop'),
         )));
     overlay().append(box);
   }
@@ -95,27 +110,51 @@ export class ExitError extends Error {}
 export function guard(s) { if (s.exited) throw new ExitError(); }
 
 // ---------------- Adventure planning ----------------
+// Every character gets the kind of practice its path step asks for, in a calm 8–10 minute session.
 export function planAdventure(p) {
   const fresh = newCharsForSession(p);
   const pool = [...new Set([...introduced(p), ...fresh])];
-  const steps = fresh.map((h) => ({ type: 'meet', h }));
+  const st = (h) => (fresh.includes(h) ? S.trace : stepOf(p, h));
+  const at = (lo, hi = lo) => pool.filter((h) => st(h) >= lo && st(h) <= hi);
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const words = playableWords(pool).length;
-  // Slot 1, hearing: new characters are always heard first in Listen & Pick.
-  steps.push(fresh.length || pool.length < 3 ? { type: 'listen', count: 6 } : pick([{ type: 'listen', count: 6 }, { type: 'detective', count: 5 }]));
-  steps.push({ type: 'trace', count: fresh.length ? 2 : 3 });
-  // Slot 2, quick recognition with movement.
-  steps.push(words >= 3 && Math.random() < 0.5 ? { type: 'river', count: 2 } : { type: 'goldfish', count: 6 });
-  steps.push({ type: 'picwrite', count: 3 });
-  // Slot 3, one or two "bonus" games, rotating so sessions feel different.
-  const extras = [{ type: 'memory' }];
-  if (pool.length >= 3) extras.push({ type: 'spot', count: 4 });
-  if (pool.length >= 3) extras.push({ type: 'detective', count: 4 });
-  if (pool.length >= 4) extras.push({ type: 'karuta', solo: true });
-  if (words >= 3) extras.push({ type: 'sushi', count: 3 });
-  const used = new Set(steps.map((x) => x.type));
-  const choices = shuffle(extras.filter((x) => !used.has(x.type)));
-  steps.push(...choices.slice(0, fresh.length ? 1 : 2));
+  const steps = fresh.map((h) => ({ type: 'meet', h }));
+  const games = [];
+
+  // ✍️🖍️ Hand: tracing and copying for characters at those steps.
+  const hand = at(S.trace, S.copy);
+  if (hand.length) games.push({ type: 'trace', only: hand.slice(0, 3), count: Math.min(3, hand.length) });
+
+  // 👂 Hear it: new and hear-step characters come up most.
+  const hearBoost = [...fresh, ...at(S.hear)];
+  const hearGames = [{ type: 'listen', count: 6 }, { type: 'goldfish', count: 6 }];
+  if (!fresh.length && pool.length >= 4) hearGames.push({ type: 'karuta' });
+  if (!fresh.length && words >= 3) hearGames.push({ type: 'river', count: 2 });
+  games.push({ ...(fresh.length ? hearGames[0] : pick(hearGames)), boost: hearBoost });
+
+  // 🔍 Read it
+  if (pool.length >= 3 && (at(S.read).length || at(S.write, MASTERED).length)) {
+    games.push({ ...pick([{ type: 'detective', count: 5 }, { type: 'spot', count: 4 }]), boost: at(S.read) });
+  }
+  // ✏️ Write it (from memory for write-step characters, with start dots for those just past Copy)
+  if (at(S.hear, MASTERED).length) {
+    games.push({ ...pick([{ type: 'picwrite', count: 3 }, { type: 'dictation', count: 3 }]), boost: at(S.write) });
+  }
+  // 🍣 Use it
+  if (words >= 2 && at(S.read, MASTERED).length) {
+    games.push({ ...pick([{ type: 'sushi', count: 3 }, { type: 'readmatch', count: 4 }, { type: 'river', count: 2 }]), boost: at(S.use) });
+  }
+  // A playful bonus when there is room.
+  const max = fresh.length ? 4 : 6;
+  if (games.length < max) {
+    const used = new Set(games.map((g) => g.type));
+    const bonus = [{ type: 'memory' }];
+    if (pool.length >= 4) bonus.push({ type: 'karuta' });
+    if (pool.length >= 3) bonus.push({ type: 'spot', count: 4 });
+    const b = shuffle(bonus.filter((x) => !used.has(x.type)))[0];
+    if (b) games.push(b);
+  }
+  steps.push(...games.slice(0, max));
   return { fresh, pool, steps };
 }
 
@@ -125,7 +164,8 @@ export function finishSession(p, s, fresh) {
   const stampChar = fresh[0] || top[0] || 'あ';
   p.stamps.push({ date: Date.now(), h: stampChar, chars: [...new Set([...fresh, ...top.slice(0, 4)])] });
   save();
-  return { earned, rows, stampChar };
+  s.end();
+  return { earned, rows, stampChar, climbed: s.climbed };
 }
 
 export { wait };

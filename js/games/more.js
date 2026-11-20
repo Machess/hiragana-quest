@@ -4,6 +4,7 @@ import { el, mochi, wait, speakerIcon, onTap } from '../ui.js';
 import * as A from '../audio.js';
 import { record, pickTargets, distractors, shuffle, lookalikePairs, mastery, playableWords } from '../learn.js';
 import { guard } from '../session.js';
+import { WORDS } from '../vocab.js';
 
 function speaker(fn, cls = '') {
   const b = el('button', { class: `speaker ${cls}`, 'aria-label': 'Play sound', html: speakerIcon() });
@@ -15,17 +16,18 @@ const hearOf = (p, h) => (p.chars[h] || {}).hear || 0;
 function restart(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }
 
 // Prefer words that use weak or brand-new characters.
-function pickWords(p, pool, n, boost = [], opts) {
-  const words = playableWords(pool, opts);
+function pickWords(p, pool, n, boost = [], opts, only = null) {
+  let words = playableWords(pool, opts);
+  if (only && only.length) { const f = words.filter((w) => [...w.w].some((c) => only.includes(c))); if (f.length) words = f; }
   const score = (w) => [...w.w].reduce((a, c) => a + (1.1 - mastery(p, c)) + (boost.includes(c) ? 1.5 : 0), 0) / w.w.length + Math.random() * 0.6;
   return words.map((w) => [score(w), w]).sort((a, b) => b[0] - a[0]).slice(0, n).map((x) => x[1]);
 }
 
 // ======================= Sound Detective (see a character, find its sound) =======================
 const OPTION_COLORS = ['#f6b7c4', '#9fd0a0', '#9cc8e8', '#f3cf6a'];
-export async function detective(s, { pool, boost = [], count = 5 }) {
+export async function detective(s, { pool, boost = [], only = null, count = 5 }) {
   const p = s.p;
-  const targets = pickTargets(p, pool, count, boost);
+  const targets = pickTargets(p, pool, count, boost, only);
   let first = true;
   for (const h of targets) {
     guard(s);
@@ -36,7 +38,7 @@ export async function detective(s, { pool, boost = [], count = 5 }) {
     let firstTry = true;
     await new Promise((done) => {
       const cards = options.map((o, i) => {
-        const play = speaker(() => A.sayKana(o), 'lg');
+        const play = speaker(() => A.tapKana(o), 'lg');
         const pick = el('button', { class: 'det-pick' }, 'This one!');
         const card = el('div', { class: 'det-option', style: { '--c': OPTION_COLORS[i] } }, play, pick);
         onTap(pick, async () => {
@@ -44,14 +46,14 @@ export async function detective(s, { pool, boost = [], count = 5 }) {
           if (o === h) {
             card.classList.add('yes');
             cards.forEach((c) => c.classList.add('locked'));
-            record(p, h, 'hear', firstTry, 0.18);
+            record(p, h, 'read', firstTry, 0.18);
             if (firstTry) s.correct(h); else A.chime(0);
             m.setMood('happy'); m.hop();
-            await A.sayKana(h);
-            await wait(500);
+            await A.sayKana(h, { lead: 450 });
+            await wait(1100);
             done();
           } else {
-            if (firstTry) { record(p, h, 'hear', false); s.miss(h); }
+            if (firstTry) { record(p, h, 'read', false); s.miss(h); }
             firstTry = false;
             card.classList.add('nope');
           }
@@ -71,15 +73,15 @@ export async function detective(s, { pool, boost = [], count = 5 }) {
 }
 
 // ======================= Spot the Different One =======================
-export async function spot(s, { pool, boost = [], count = 5 }) {
+export async function spot(s, { pool, boost = [], only = null, count = 5 }) {
   const p = s.p;
-  const pairs = shuffle(lookalikePairs(pool));
+  const pairs = shuffle(lookalikePairs(pool, only));
   const sizes = [[3, 3], [4, 3], [5, 3], [6, 3], [6, 3]];
   for (let round = 0; round < count; round++) {
     guard(s);
     let pair = pairs.length ? pairs[round % pairs.length] : null;
     if (!pair) {
-      const a = pickTargets(p, pool, 1, boost)[0];
+      const a = pickTargets(p, pool, 1, boost, only)[0];
       pair = [a, distractors(a, pool, 1, false)[0]];
     }
     const [same, odd] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
@@ -98,13 +100,13 @@ export async function spot(s, { pool, boost = [], count = 5 }) {
           if (i === oddAt) {
             b.classList.add('found');
             grid.classList.add('solved');
-            record(p, odd, 'hear', firstTry, 0.06);
+            record(p, odd, 'read', firstTry, 0.12);
+            if (firstTry) record(p, same, 'read', true, 0.06);
             if (firstTry) s.correct(odd); else A.chime(0);
             msg.replaceChildren(el('span', { class: 'kana pair' }, odd), ' is not ', el('span', { class: 'kana pair' }, same));
-            await A.sayKana(odd);
-            await wait(250);
-            await A.sayKana(same);
-            await wait(900);
+            await A.sayKana(odd, { lead: 450 });
+            await A.sayKana(same, { gap: 900 });
+            await wait(1300);
             done();
           } else {
             if (firstTry) s.miss(odd);
@@ -117,16 +119,16 @@ export async function spot(s, { pool, boost = [], count = 5 }) {
       const grid = el('div', { class: 'spot-grid', style: { '--cols': cols } }, ...cells);
       const v = s.view('spot', el('div', { class: 'spot-top' }, mochi('idle', 'md'), msg), grid);
       v.dataset.target = odd;
-      if (round === 0) A.say('chigau');
+      if (round === 0) A.say('chigau', { lead: 400 });
     });
   }
 }
 
 // ======================= Sushi Train (回転寿司) =======================
 const CUSTOMERS = ['🧒', '👧', '👦', '👴', '👵', '👩', '👨', '🧑‍🍳'];
-export async function sushi(s, { pool, boost = [], count = 3 }) {
+export async function sushi(s, { pool, boost = [], only = null, count = 3 }) {
   const p = s.p;
-  const words = pickWords(p, pool, count, boost, { max: 4 });
+  const words = pickWords(p, pool, count, boost, { max: 4 }, only);
   const HALF = 8;           // plates per half of the belt (the belt is two identical halves)
   const belt = el('div', { class: 'belt-track' });
   const plates = [];        // [{ node, kana, i }] for both halves
@@ -141,7 +143,7 @@ export async function sushi(s, { pool, boost = [], count = 3 }) {
   const slotsRow = el('div', { class: 'sushi-slots' });
   const orderPic = el('div', { class: 'order-pic emoji' });
   const customer = el('div', { class: 'customer emoji' });
-  const sp = speaker(() => cur && A.play(`audio/vocab/${cur.id}.mp3`), 'lg');
+  const sp = speaker(() => cur && A.tapVocab(cur.id), 'lg');
   const v = s.view('sushi',
     el('div', { class: 'sushi-counter' },
       customer,
@@ -177,9 +179,10 @@ export async function sushi(s, { pool, boost = [], count = 3 }) {
     slotsRow.replaceChildren(...slots);
     let idx = 0;
     let firstTry = true;
+    let wordMisses = 0;
     fillFor(chars);
-    await wait(500);
-    A.play(`audio/vocab/${w.id}.mp3`);
+    await wait(600);
+    A.sayVocab(w.id, { lead: 300 });
     await new Promise((done) => {
       plates.forEach((pl) => {
         pl.node.onpointerdown = async (e) => {
@@ -202,19 +205,20 @@ export async function sushi(s, { pool, boost = [], count = 3 }) {
             const refill = missing || shuffle(pool)[0];
             setTimeout(() => setPlate(pl.i, refill), 700);
             if (idx >= chars.length) {
-              await wait(400);
+              if (wordMisses <= 1) chars.forEach((ch) => record(p, ch, 'use', true, 0.1));
+              await wait(500);
               customer.classList.add('happy');
-              await A.play(`audio/vocab/${w.id}.mp3`);
-              A.say(Math.random() < 0.5 ? 'oishii' : 'arigatou');
-              await wait(1300);
+              await A.sayVocab(w.id, { gap: 900 });
+              A.say(Math.random() < 0.5 ? 'oishii' : 'arigatou', { gap: 600 });
+              await wait(2000);
               customer.classList.remove('happy');
               done();
             }
           } else {
-            if (firstTry) { record(p, chars[idx], 'hear', false); s.miss(chars[idx]); }
+            if (firstTry) { record(p, chars[idx], 'hear', false); s.miss(chars[idx]); wordMisses++; }
             firstTry = false;
             restart(pl.node, 'wiggle');
-            setTimeout(() => A.sayKana(chars[idx]), 300);
+            A.sayKana(chars[idx], { lead: 500 });
           }
         };
       });
@@ -223,9 +227,9 @@ export async function sushi(s, { pool, boost = [], count = 3 }) {
 }
 
 // ======================= River Stepping Stones (川渡り) =======================
-export async function river(s, { pool, boost = [], count = 3 }) {
+export async function river(s, { pool, boost = [], only = null, count = 3 }) {
   const p = s.p;
-  const words = pickWords(p, pool, count, boost, { max: 4 });
+  const words = pickWords(p, pool, count, boost, { max: 4 }, only);
   const W = 1232, H = 690;                 // stage area below the top bar
   const BANK_L = 150, BANK_R = 190;
   const LANES = [150, 345, 540];           // stone centre y positions
@@ -234,7 +238,7 @@ export async function river(s, { pool, boost = [], count = 3 }) {
   const goal = el('div', { class: 'river-goal' });
   const hop = mochi('idle', 'sm');
   const walker = el('div', { class: 'river-mochi' }, hop);
-  const sp = speaker(() => cur && A.sayKana(cur), 'lg');
+  const sp = speaker(() => cur && A.tapKana(cur), 'lg');
   const v = s.view('river',
     el('div', { class: 'river-scene' },
       el('div', { class: 'bank left' }), water, el('div', { class: 'bank right' }, goal),
@@ -255,6 +259,7 @@ export async function river(s, { pool, boost = [], count = 3 }) {
     void walker.offsetWidth;
     walker.classList.remove('no-move');
     const step = (W - BANK_L - BANK_R) / chars.length;
+    let wordMisses = 0;
     v.dataset.word = w.w;
     for (let i = 0; i < chars.length; i++) {
       guard(s);
@@ -279,23 +284,23 @@ export async function river(s, { pool, boost = [], count = 3 }) {
               if (firstTry) s.correct(h); else A.pop();
               jump();
               place(x, lanes[j]);
-              A.sayKana(h);
-              await wait(650);
+              A.sayKana(h, { lead: 200 });
+              await wait(1000);
               stones.forEach((z) => z !== st && z.remove());
               done();
             } else {
-              if (firstTry) { record(p, h, 'hear', false); s.miss(h); }
+              if (firstTry) { record(p, h, 'hear', false); s.miss(h); wordMisses++; }
               firstTry = false;
               A.splash();
               st.classList.add('sunk');
               setTimeout(() => st.classList.remove('sunk'), 1100);
-              setTimeout(() => A.sayKana(h), 350);
+              A.sayKana(h, { lead: 600 });
             }
           });
           stonesLayer.append(st);
           return st;
         });
-        setTimeout(() => A.sayKana(h), 400);
+        A.sayKana(h, { lead: 700 });
       });
     }
     // Reach the far bank: the stones spell the word.
@@ -307,9 +312,53 @@ export async function river(s, { pool, boost = [], count = 3 }) {
     goal.classList.add('show');
     hop.setMood('happy');
     A.chime(1);
-    await A.play(`audio/vocab/${w.id}.mp3`);
-    A.say('tsuita');
-    await wait(1500);
+    if (wordMisses <= 1) chars.forEach((ch) => record(p, ch, 'use', true, 0.1));
+    await A.sayVocab(w.id, { lead: 500 });
+    A.say('tsuita', { gap: 700 });
+    await wait(2200);
     hop.setMood('idle');
+  }
+}
+
+// ======================= Read & Match (read a word, no sound → pick its picture) =======================
+export async function readmatch(s, { pool, boost = [], only = null, count = 4 }) {
+  const p = s.p;
+  const words = pickWords(p, pool, count, boost, { max: 4 }, only);
+  for (const w of words) {
+    guard(s);
+    const others = shuffle(WORDS.filter((x) => x.emoji !== w.emoji && x.w !== w.w)).slice(0, 2);
+    const options = shuffle([w, ...others]);
+    let misses = 0;
+    const m = mochi('idle', 'md');
+    const card = el('div', { class: 'rm-word kana' }, w.w);
+    await new Promise((done) => {
+      const pics = options.map((o) => {
+        const b = el('button', { class: 'rm-pic', 'data-w': o.w }, el('span', { class: 'emoji' }, o.emoji));
+        onTap(b, async () => {
+          if (b.classList.contains('nope') || pics.some((x) => x.classList.contains('yes'))) return;
+          if (o === w) {
+            b.classList.add('yes');
+            const first = misses === 0;
+            [...w.w].forEach((c) => { record(p, c, 'use', first, 0.12); record(p, c, 'read', first, 0.06); });
+            if (first) s.correct(); else A.chime(0);
+            m.setMood('happy'); m.hop();
+            await A.sayVocab(w.id, { lead: 450 });
+            await wait(1300);
+            done();
+          } else {
+            misses++;
+            if (misses === 1) s.miss();
+            b.classList.add('nope');
+            A.tok();
+            if (misses >= 1) { card.classList.add('hinted'); A.sayVocab(w.id, { lead: 500 }); }
+          }
+        });
+        return b;
+      });
+      const v = s.view('readmatch',
+        el('div', { class: 'rm-left' }, card, el('div', { class: 'rm-mochi' }, m, bubble('Read the word. Which picture is it?'))),
+        el('div', { class: 'rm-pics' }, ...pics));
+      v.dataset.target = w.w;
+    });
   }
 }

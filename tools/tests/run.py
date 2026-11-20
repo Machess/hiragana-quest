@@ -37,6 +37,10 @@ async def step(pg, kind):
           const vis = ps.find(p => { const r = p.getBoundingClientRect(); return r.left > W.left + 20 && r.right < W.right - 20; });
           if (!vis) return false; vis.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true})); return true; }""", c)
         if not ok: await pg.wait_for_timeout(300); return True
+    elif kind == 'readmatch':
+        loc = pg.locator(f'.rm-pic[data-w="{t}"]')
+        if await loc.count() == 0: return False
+        await loc.first.evaluate(TAP)
     elif kind == 'river':
         loc = pg.locator(f'.stone-btn[data-h="{t}"]:not(.gone)')
         if await loc.count() == 0: return False
@@ -61,7 +65,7 @@ async def play_view(pg, seen):
         seen.add(kind); await pg.wait_for_timeout(700); await shot(pg, kind)
     if kind=='meet':
         await pg.click('text=Let’s write it!')
-    elif kind in ('trace','picwrite'):
+    elif kind in ('trace','picwrite','dictation'):
         await pg.wait_for_timeout(400)
         # the target char: for trace read from meet/pad? use hook: last spoken unknown -> get from STROKES by trying
         h = await pg.evaluate("window.__lastTraceChar")
@@ -85,8 +89,10 @@ async def play_view(pg, seen):
         hs = await pg.evaluate("[...new Set([...document.querySelectorAll('.card')].map(c=>c.dataset.h))]")
         for h in hs:
             cards = pg.locator(f'.card[data-h="{h}"]')
-            await cards.nth(0).dispatch_event('pointerdown'); await pg.wait_for_timeout(100)
-            await cards.nth(1).dispatch_event('pointerdown')
+            if await cards.count() < 2: break
+            await cards.nth(0).dispatch_event('pointerdown', timeout=3000); await pg.wait_for_timeout(250)
+            if await cards.count() < 2: break
+            await cards.nth(1).dispatch_event('pointerdown', timeout=3000)
             if h==hs[0]: await pg.wait_for_timeout(300); await shot(pg,'memory-flip')
             await pg.wait_for_timeout(900)
         await pg.wait_for_timeout(2600)
@@ -99,7 +105,7 @@ async def play_view(pg, seen):
             await pg.wait_for_timeout(600)
             if await pg.locator('.view.karuta-end').count(): break
         await pg.wait_for_timeout(2800)
-    elif kind in ('detective','spot','sushi','river'):
+    elif kind in ('detective','spot','sushi','river','readmatch'):
         await step(pg, kind)
         await pg.wait_for_timeout(250 if kind=='sushi' else 450)
     elif kind=='karuta-end':
@@ -110,6 +116,9 @@ async def adventure(pg, seen, label):
     await pg.click('.adventure')
     for i in range(160):
         await pg.wait_for_timeout(200)
+        if await pg.locator('.screen.summary').count():
+            await pg.wait_for_timeout(1500); await shot(pg, f'summary-{label}')
+            await pg.click('text=Next'); continue
         if await pg.locator('.screen.ceremony').count():
             await pg.wait_for_timeout(4000); await shot(pg, f'ceremony-{label}')
             await pg.click('text=Next')
@@ -131,6 +140,16 @@ async def main(mode):
           // test hook: remember which char a trace pad is for
           const _orig = window.fetch;
         """)
+        await pg.add_init_script("""
+          window.__audioLog = [];
+          const _start = AudioBufferSourceNode.prototype.start;
+          AudioBufferSourceNode.prototype.start = function(...a) {
+            const d = this.buffer ? this.buffer.duration : 0;
+            const t0 = performance.now();
+            window.__audioLog.push({ t0, t1: t0 + d * 1000, d });
+            return _start.apply(this, a);
+          };
+        """)
         await pg.goto(URL); await pg.wait_for_timeout(800)
         await shot(pg,'profiles-empty')
         await pg.click('text=New player'); await pg.fill('.name-input','Yuki'); await shot(pg,'new-profile')
@@ -148,10 +167,16 @@ async def main(mode):
             lv = await pg.evaluate("Object.keys(JSON.parse(localStorage.getItem('hiraganaQuest.v1')).profiles[0].chars).join('')")
             print('after session', s, 'introduced', lv)
         await pg.click('text=Trophies'); await pg.wait_for_timeout(600); await shot(pg,'trophies')
-        await pg.click('.back'); await pg.click('text=Free play'); await pg.wait_for_timeout(500); await shot(pg,'freeplay')
+        await pg.click('.back'); await pg.click('text=Dojo'); await pg.wait_for_timeout(500); await shot(pg,'dojo')
+        await pg.click('.back'); await pg.click('text=My Hiragana'); await pg.wait_for_timeout(500); await shot(pg,'chart')
+        await pg.locator('.chart-cell.met').first.click(); await pg.wait_for_timeout(1500); await shot(pg,'charcard')
         state = await pg.evaluate("JSON.parse(localStorage.getItem('hiraganaQuest.v1')).profiles[0]")
-        print(json.dumps({h:{k:round(v,2) if isinstance(v,float) else v for k,v in c.items() if k in ('hear','write')} for h,c in state['chars'].items()},ensure_ascii=False))
+        print(json.dumps({h:(c.get('step'), c.get('prog')) for h,c in state['chars'].items()},ensure_ascii=False))
         print('trophies',state['trophies'],'stamps',len(state['stamps']),'mochiSpeed',state['mochiSpeed'])
+        log = await pg.evaluate("window.__audioLog.filter(x => x.d >= 0.4).sort((a,b)=>a.t0-b.t0)")
+        overl = sum(1 for a,b in zip(log, log[1:]) if b['t0'] < a['t1'] - 30)
+        gaps = sorted(b['t0']-a['t1'] for a,b in zip(log, log[1:]) if b['t0'] >= a['t1'] - 30)
+        print(f"speech clips {len(log)}, overlapping pairs {overl}, shortest gaps ms {[round(g) for g in gaps[:5]]}, median gap {round(gaps[len(gaps)//2]) if gaps else None}")
         await b.close()
     print('ERRORS:', *errors[:30], sep='\n')
 asyncio.run(main(sys.argv[1] if len(sys.argv)>1 else '1'))

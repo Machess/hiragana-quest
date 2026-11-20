@@ -53,27 +53,70 @@ export function preloadChars(chars) {
   chars.forEach((h) => { load(kanaUrl(h)); load(wordUrl(h)); });
 }
 
-// Play a speech clip. Stops any previous speech so clips never overlap.
-export async function play(url, { interrupt = true } = {}) {
-  const buf = await load(url);
-  if (!buf) return;
+// ---- Speech queue: calm, natural pacing ----
+// Clips never overlap or cut each other off. Each clip waits for the one before it to finish,
+// plus a natural pause. A tap on a speaker button (interrupt: true) answers immediately.
+export const GAP = 650;        // pause between two queued clips (ms)
+const LEAD = 250;              // small breath before speech that follows a chime
+let queue = [];                // pending { url, gap, resolve }
+let playing = false;
+let lastEnd = 0;
+
+function startClip(buf) {
   const c = ac();
-  if (c.state === 'suspended') await c.resume();
-  if (interrupt && current) { try { current.stop(); } catch (e) {} }
   const src = c.createBufferSource();
   src.buffer = buf;
   src.connect(master);
   src.start();
   current = src;
-  return new Promise((res) => { src.onended = res; });
+  return new Promise((res) => { src.onended = () => { if (current === src) current = null; res(); }; });
+}
+async function pump() {
+  if (playing) return;
+  playing = true;
+  while (queue.length) {
+    const item = queue.shift();
+    const buf = await load(item.url);
+    const c = ac();
+    if (c.state === 'suspended') await c.resume();
+    const since = performance.now() - lastEnd;
+    const pause = Math.max(item.gap - since, item.lead || 0);
+    if (pause > 0) await new Promise((r) => setTimeout(r, pause));
+    if (item.cancelled) { item.resolve(); continue; }
+    if (buf) await startClip(buf);
+    lastEnd = performance.now();
+    item.resolve();
+  }
+  playing = false;
 }
 
-export const sayKana = (h) => play(kanaUrl(h));
-export const sayWord = (h) => play(wordUrl(h));
-export const say = (id) => play(voiceUrl(id));
+// Play a speech clip. Returns a promise that resolves when it has finished.
+// interrupt: stop whatever is speaking and play now (for taps on a speaker button).
+export function play(url, { interrupt = false, gap = GAP, lead = 0 } = {}) {
+  if (interrupt) {
+    queue.forEach((q) => { q.cancelled = true; q.resolve(); });
+    queue = [];
+    if (current) { try { current.stop(); } catch (e) {} current = null; }
+    lastEnd = 0;
+    gap = 0;
+  }
+  // Never let a backlog build up: keep at most two waiting clips.
+  while (queue.length >= 2) { const old = queue.shift(); old.cancelled = true; old.resolve(); }
+  return new Promise((resolve) => { queue.push({ url, gap, lead, resolve }); pump(); });
+}
+export const isSpeaking = () => playing;
+
+export const sayKana = (h, opts) => play(kanaUrl(h), opts);
+export const sayWord = (h, opts) => play(wordUrl(h), opts);
+export const sayVocab = (id, opts) => play(`audio/vocab/${id}.mp3`, opts);
+export const say = (id, opts) => play(voiceUrl(id), opts);
+// A sound the child asked for by tapping: right away.
+export const tapKana = (h) => sayKana(h, { interrupt: true });
+export const tapWord = (h) => sayWord(h, { interrupt: true });
+export const tapVocab = (id) => sayVocab(id, { interrupt: true });
 
 const PRAISE = ['sugoi', 'yattane', 'jouzu', 'iine', 'pittari'];
-export const praise = () => say(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+export const praise = () => say(PRAISE[Math.floor(Math.random() * PRAISE.length)], { lead: LEAD });
 
 // ---- Synth sounds ----
 function tone(freq, start, dur, gain, type = 'sine') {

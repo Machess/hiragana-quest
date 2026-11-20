@@ -1,5 +1,5 @@
 // Offline support: everything is precached on install, served cache-first.
-const VERSION = 'hq-bf95abbb02';
+const VERSION = 'hq-dbed5d8173';
 const FILES = [
  "./",
  "audio/kana/a.mp3",

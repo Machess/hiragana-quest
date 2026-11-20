@@ -3,7 +3,7 @@ const KEY = 'hiraganaQuest.v1';
 
 const defaultState = () => ({
   profiles: [],
-  settings: { volume: 1, romaji: false, reducedMotion: false },
+  settings: { volume: 1, romaji: false, reducedMotion: false, openAll: false },
   lastProfileId: null,
 });
 
@@ -63,7 +63,7 @@ export function deleteProfile(id) {
 export function resetProfile(id) {
   const p = getProfile(id);
   if (!p) return;
-  Object.assign(p, { chars: {}, trophies: {}, rowTrophies: {}, stamps: [], mochiSpeed: 5200, bestStreak: 0 });
+  Object.assign(p, { chars: {}, trophies: {}, rowTrophies: {}, stamps: [], mochiSpeed: 5200, bestStreak: 0, dojoSel: [] });
   save();
 }
 

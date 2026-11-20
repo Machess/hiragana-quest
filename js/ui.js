@@ -104,7 +104,7 @@ const METALS = {
   2: { a: '#eef1f6', b: '#9aa3b2', name: 'silver' },
   3: { a: '#ffe08a', b: '#d39b14', name: 'gold' },
 };
-export function trophySVG(h, level, id = Math.random().toString(36).slice(2, 7)) {
+export function trophySVG(h, level, id = Math.random().toString(36).slice(2, 7), met = false) {
   const m = METALS[level];
   const g = `tg${id}`;
   const locked = level === 0;
@@ -116,7 +116,9 @@ export function trophySVG(h, level, id = Math.random().toString(36).slice(2, 7))
     <rect x="44" y="66" width="12" height="16" fill="url(#${g})"/>
     <rect x="28" y="82" width="44" height="10" rx="3" fill="url(#${g})"/>
     <rect x="22" y="92" width="56" height="16" rx="4" fill="${locked ? '#cfc9bb' : '#5b4a3a'}"/>
-    ${locked
+    ${locked && met
+      ? `<text x="50" y="49" text-anchor="middle" font-size="32" fill="#fffaf0" opacity=".9" font-family="Klee One, serif" font-weight="600">${h}</text>`
+      : locked
       ? '<text x="50" y="47" text-anchor="middle" font-size="26" fill="#f5f1e8" font-family="M PLUS Rounded 1c, sans-serif">?</text>'
       : `<text x="50" y="49" text-anchor="middle" font-size="32" fill="${level === 2 ? '#4a5266' : '#fffaf0'}" font-family="Klee One, serif" font-weight="600">${h}</text>`}
   </svg>`;

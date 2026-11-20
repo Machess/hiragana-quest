@@ -24,13 +24,13 @@ function fishSVG(color) {
   </svg>`;
 }
 
-export async function goldfish(s, { pool, boost = [], count = 6 }) {
+export async function goldfish(s, { pool, boost = [], only = null, count = 6 }) {
   const p = s.p;
-  const targets = pickTargets(p, pool, count, boost);
+  const targets = pickTargets(p, pool, count, boost, only);
   const bowlCount = el('span', { class: 'bowl-count' }, '0');
   const bowl = el('div', { class: 'bowl' }, el('span', { class: 'emoji' }, '🥣'), bowlCount);
   const pond = el('div', { class: 'pond' });
-  const sp = speaker(() => A.sayKana(cur), 'lg');
+  const sp = speaker(() => A.tapKana(cur), 'lg');
   const v = s.view('goldfish', el('div', { class: 'gf-top' }, sp, el('div', { class: 'bubble' }, 'Scoop the fish that says…'), bowl), pond);
   let cur = null;
   let fishes = [];
@@ -88,7 +88,7 @@ export async function goldfish(s, { pool, boost = [], count = 6 }) {
       v.dataset.target = h;
       let firstTry = true;
       const fs = spawn(h);
-      setTimeout(() => A.sayKana(h), 450);
+      A.sayKana(h, { lead: 700 });
       await new Promise((done) => {
         fs.forEach((f) => onTap(f.node, async () => {
           if (f.gone || f.dart) return;
@@ -102,7 +102,7 @@ export async function goldfish(s, { pool, boost = [], count = 6 }) {
             caught++;
             bowlCount.textContent = caught;
             bowl.classList.remove('bump'); void bowl.offsetWidth; bowl.classList.add('bump');
-            await wait(900);
+            await wait(1300);
             done();
           } else {
             if (firstTry) { record(p, h, 'hear', false); s.miss(h); }
@@ -112,7 +112,7 @@ export async function goldfish(s, { pool, boost = [], count = 6 }) {
             f.vx = f.vx || 40;
             f.node.classList.add('swim-off');
             setTimeout(() => { f.gone = true; f.node.remove(); }, 900);
-            setTimeout(() => A.sayKana(h), 400);
+            A.sayKana(h, { lead: 500 });
           }
         }));
       });
@@ -125,12 +125,12 @@ export async function goldfish(s, { pool, boost = [], count = 6 }) {
 }
 
 // ======================= Memory Match =======================
-export async function memory(s, { pool, boost = [] }) {
+export async function memory(s, { pool, boost = [], only = null }) {
   const p = s.p;
   const avgHear = pool.reduce((a, h) => a + ((p.chars[h] || {}).hear || 0), 0) / pool.length;
   const mode = pool.length < 3 ? 'same' : avgHear > 0.45 && Math.random() < 0.5 ? 'sound' : 'picture';
   const nPairs = Math.min(6, pool.length);
-  const chars = [...new Set([...boost, ...pickTargets(p, pool, nPairs * 3, boost)])].slice(0, nPairs);
+  const chars = [...new Set([...(only || []), ...boost.filter((h) => pool.includes(h)), ...pickTargets(p, pool, nPairs * 3, boost)])].slice(0, nPairs);
   while (chars.length < Math.min(nPairs, pool.length)) {
     const extra = pool.find((h) => !chars.includes(h));
     if (!extra) break;
@@ -168,7 +168,7 @@ export async function memory(s, { pool, boost = [] }) {
         c.open = true;
         node.flip(true);
         A.pop();
-        if (c.face === 'picture') A.sayWord(c.h); else A.sayKana(c.h);
+        if (c.face === 'picture') A.tapWord(c.h); else A.tapKana(c.h);
         open.push(c);
         if (open.length < 2) return;
         lock = true;
@@ -184,7 +184,7 @@ export async function memory(s, { pool, boost = [] }) {
           lock = false;
           if (matched === chars.length) { await wait(900); done(); }
         } else {
-          await wait(500);
+          await wait(700);
           a.open = b.open = false;
           a.node.flip(false); b.node.flip(false);
           lock = false;
@@ -193,16 +193,16 @@ export async function memory(s, { pool, boost = [] }) {
       grid.append(node);
     });
   });
-  A.say('yokudekimashita');
-  await wait(1500);
+  A.say('yokudekimashita', { lead: 600 });
+  await wait(2200);
 }
 
 // ======================= Karuta (かるた) =======================
 // players: [{ profile|null, name, avatar }]. One player = against Mochi.
-export async function karuta(s, { pool, boost = [], players }) {
+export async function karuta(s, { pool, boost = [], only = null, players }) {
   const solo = players.length === 1;
   const nCards = Math.min(6, pool.length);
-  const chars = [...new Set([...boost, ...pickTargets(s.p, pool, nCards * 3, boost)])].slice(0, nCards);
+  const chars = [...new Set([...(only || []).slice(0, nCards), ...boost.filter((h) => pool.includes(h)), ...pickTargets(s.p, pool, nCards * 3, boost)])].slice(0, nCards);
   while (chars.length < nCards) chars.push(pool.find((h) => !chars.includes(h)));
   const order = shuffle(chars);
   const score = players.map(() => 0);
@@ -225,7 +225,7 @@ export async function karuta(s, { pool, boost = [], players }) {
   const m = mochi('idle', 'md');
   const paw = el('div', { class: 'paw-bar' }, el('div', { class: 'paw-fill' }));
   const mochiPile = el('span', { class: 'k-pile' }, '0');
-  const reader = speaker(() => cur && A.sayKana(cur), 'lg');
+  const reader = speaker(() => cur && A.tapKana(cur), 'lg');
   const mid = el('div', { class: 'k-mid' }, reader,
     solo ? el('div', { class: 'k-mochi' }, m, el('div', {}, el('div', { class: 'k-name' }, 'Mochi', mochiPile), paw)) : null);
   s.view(`karuta ${solo ? 'solo' : 'duo'}`, ...(solo ? [mid, sides[0].side] : [sides[1].side, mid, sides[0].side]));
@@ -236,7 +236,7 @@ export async function karuta(s, { pool, boost = [], players }) {
     guard(s);
     cur = h;
     s.stage.dataset.target = h;
-    await wait(700);
+    await wait(1200);
     A.sayKana(h);
     const winner = await new Promise((res) => {
       let over = false;
@@ -277,7 +277,7 @@ export async function karuta(s, { pool, boost = [], players }) {
       const pr = players[winner].profile;
       if (pr) record(pr, h, 'hear', true, 0.15);
       s.correct(h);
-      A.say('totta');
+      A.say('totta', { lead: 300 });
       if (solo) { s.p.mochiSpeed = Math.max(2200, (s.p.mochiSpeed || 5200) - 150); save(); }
     } else {
       mochiScore++;
@@ -288,7 +288,7 @@ export async function karuta(s, { pool, boost = [], players }) {
       s.p.mochiSpeed = Math.min(7000, (s.p.mochiSpeed || 5200) + 400);
       save();
     }
-    await wait(500);
+    await wait(900);
   }
   // Result
   const lines = solo
@@ -304,6 +304,6 @@ export async function karuta(s, { pool, boost = [], players }) {
     el('div', { class: 'k-results' }, ...lines.map((l) => el('div', { class: 'k-res' }, l))),
   );
   void top;
-  A.say('yokudekimashita');
-  await wait(2600);
+  A.say('yokudekimashita', { lead: 600 });
+  await wait(3000);
 }

@@ -1,14 +1,17 @@
-import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake } from './ui.js';
+import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake, speakerIcon } from './ui.js';
 import * as A from './audio.js';
 import * as S from './store.js';
 import { KANA } from './data.js';
+import * as L from './learn.js';
 import {
-  ROW_CHARS, introduced, mastery, rowUnlocked, rowComplete, kana, MASTERED, UNLOCK_NEXT, UNLOCK_EACH, updateTrophies, playableWords,
+  ROW_CHARS, introduced, mastery, rowUnlocked, rowComplete, kana, updateTrophies, playableWords,
+  STEPS, MASTERED, stepOf, isIntroduced, charState, lookalikePairs, writingMode, introduce,
 } from './learn.js';
 import { Session, ExitError, planAdventure, finishSession } from './session.js';
-import { meet, trace, listen, picwrite } from './games/core.js';
+import { meet, trace, listen, picwrite, dictation, writeOne } from './games/core.js';
 import { goldfish, memory, karuta } from './games/extra.js';
-import { detective, spot, sushi, river } from './games/more.js';
+import { detective, spot, sushi, river, readmatch } from './games/more.js';
+import { animatedKanaSVG } from './trace.js';
 
 const app = document.getElementById('app');
 const AVATARS = ['🦊', '🐼', '🐸', '🐱', '🐰', '🐻', '🐧', '🐯', '🐨', '🦉', '🐙', '🦄'];
@@ -104,10 +107,19 @@ function rowStrip(p) {
   return el('div', { class: 'row-strip' }, ...ROW_CHARS.map((r, i) => {
     const unlocked = rowUnlocked(p, i);
     const done = rowComplete(p, i);
-    const prog = r.chars.reduce((a, h) => a + Math.min(1, mastery(p, h) / MASTERED), 0) / r.chars.length;
+    const prog = r.chars.reduce((a, h) => a + mastery(p, h), 0) / r.chars.length;
     return el('div', { class: `row-dot ${unlocked ? '' : 'locked'} ${done ? 'done' : ''}`, style: { '--prog': prog } },
       el('span', {}, r.label));
   }));
+}
+
+function adventurePreview(p) {
+  const fresh = L.newCharsForSession(p);
+  const practice = introduced(p).filter((h) => !fresh.includes(h))
+    .sort((a, b) => mastery(p, a) - mastery(p, b)).slice(0, 4);
+  return el('div', { class: 'adv-preview' },
+    fresh.length ? el('span', {}, 'New: ', el('b', { class: 'kana' }, fresh.join(' '))) : null,
+    practice.length ? el('span', {}, 'Practice: ', el('b', { class: 'kana' }, practice.join(' '))) : null);
 }
 
 function showHome(greet = false) {
@@ -127,15 +139,32 @@ function showHome(greet = false) {
       el('div', { class: 'who', style: { '--c': p.color } }, el('span', { class: 'avatar' }, p.avatar), p.name)),
     el('div', { class: 'home-body' },
       el('div', { class: 'home-mochi' }, m, el('div', { class: 'bubble' }, greeting)),
-      el('div', { class: 'home-actions' }, adv,
+      el('div', { class: 'home-actions' }, adv, adventurePreview(p),
         el('div', { class: 'home-tiles' },
-          tile('Free play', '🎮', showFreePlay, n < 2),
+          tile('Dojo', '🥋', showDojo, n < 1 && !S.settings().openAll),
+          tile('My Hiragana', 'あ', showChart),
           tile('Trophies', '🏆', showTrophies),
           tile('Stamps', '🔴', showStamps)))),
     rowStrip(p),
   );
-  if (greet) setTimeout(() => A.say('konnichiwa'), 250);
+  app.querySelector('.home-tile:nth-child(2) .emoji').classList.add('kana-tile');
+  if (greet) A.say('konnichiwa', { lead: 300 });
   m.hop();
+}
+
+// ================= Path display =================
+function pathStones(p, h, { compact = false, lit = null } = {}) {
+  const c = isIntroduced(p, h) ? charState(p, h) : { step: 0, prog: 0 };
+  return el('div', { class: `path ${compact ? 'compact' : ''}` }, ...STEPS.map((st, i) => {
+    const state = c.step > i ? 'done' : c.step === i ? 'here' : 'todo';
+    const fresh = lit && lit.includes(i);
+    const dots = state === 'here' && !compact && st.need > 1
+      ? el('span', { class: 'path-dots' }, ...Array.from({ length: st.need }, (_, k) => el('i', { class: k < c.prog ? 'on' : '' })))
+      : null;
+    return el('div', { class: `path-stone ${state} ${fresh ? 'fresh' : ''}`, style: { '--d': `${i * 0.12}s` } },
+      el('span', { class: 'path-icon emoji' }, st.icon),
+      compact ? null : el('span', { class: 'path-name' }, st.name), dots);
+  }));
 }
 
 // ================= Adventure =================
@@ -146,7 +175,7 @@ async function runAdventure() {
   const s = new Session({ profile: p, root: app, steps: plan.steps.length, onExit: () => showHome() });
   try {
     for (const step of plan.steps) {
-      await runStep(s, step, plan.pool, plan.fresh);
+      await runStep(s, step, plan.pool);
       if (s.exited) return;
       s.nextStep();
     }
@@ -155,24 +184,48 @@ async function runAdventure() {
     throw e;
   }
   const result = finishSession(p, s, plan.fresh);
+  await stepsSummary(result.climbed);
   await trophyCeremony(result);
   await stampEnd(s);
 }
 
-async function runStep(s, step, pool, boost) {
+const COUNTS = { trace: 3, listen: 6, goldfish: 6, detective: 5, spot: 4, picwrite: 3, dictation: 3, sushi: 3, readmatch: 4, river: 2 };
+async function runStep(s, step, pool) {
+  const o = { pool, boost: step.boost || [], only: step.only || null, count: step.count || COUNTS[step.type] };
   switch (step.type) {
     case 'meet': return meet(s, step.h);
-    case 'listen': return listen(s, { pool, boost, count: step.count });
-    case 'trace': return trace(s, { pool, boost, count: step.count });
-    case 'goldfish': return goldfish(s, { pool, boost, count: step.count });
-    case 'picwrite': return picwrite(s, { pool, boost, count: step.count });
-    case 'memory': return memory(s, { pool, boost });
-    case 'karuta': return karuta(s, { pool, boost, players: [{ profile: s.p, name: s.p.name, avatar: s.p.avatar }] });
-    case 'detective': return detective(s, { pool, boost, count: step.count });
-    case 'spot': return spot(s, { pool, boost, count: step.count });
-    case 'sushi': return sushi(s, { pool, boost, count: step.count });
-    case 'river': return river(s, { pool, boost, count: step.count });
+    case 'trace': return trace(s, o);
+    case 'listen': return listen(s, o);
+    case 'goldfish': return goldfish(s, o);
+    case 'picwrite': return picwrite(s, o);
+    case 'dictation': return dictation(s, o);
+    case 'memory': return memory(s, o);
+    case 'karuta': return karuta(s, { ...o, players: step.players || [{ profile: s.p, name: s.p.name, avatar: s.p.avatar }] });
+    case 'detective': return detective(s, o);
+    case 'spot': return spot(s, o);
+    case 'sushi': return sushi(s, o);
+    case 'river': return river(s, o);
+    case 'readmatch': return readmatch(s, o);
   }
+}
+
+// "Today's steps": every character that moved along its path this session.
+async function stepsSummary(climbed) {
+  if (!climbed || !climbed.length) return;
+  const p = profile;
+  const byChar = new Map();
+  for (const c of climbed) {
+    const e = byChar.get(c.h) || { h: c.h, steps: [] };
+    e.steps.push(c.from);
+    byChar.set(c.h, e);
+  }
+  const rows = [...byChar.values()].slice(0, 6).map((e) =>
+    el('div', { class: 'sum-row' }, el('span', { class: 'sum-kana kana' }, e.h), pathStones(p, e.h, { compact: true, lit: e.steps })));
+  const next = el('button', { class: 'btn big' }, 'Next');
+  screen('summary', el('h2', {}, 'Steps you climbed today'), el('div', { class: 'sum-list' }, ...rows),
+    el('div', { class: 'center' }, mochi('happy', 'md'), next));
+  A.chime(1);
+  await new Promise((r) => next.addEventListener('click', r, { once: true }));
 }
 
 async function trophyCeremony({ earned, rows }) {
@@ -182,20 +235,18 @@ async function trophyCeremony({ earned, rows }) {
       el('h2', {}, 'New trophies!'),
       shelf,
       el('div', { class: 'center' }, mochi('happy', 'md')));
-    A.say('trophy');
+    A.say('trophy', { lead: 300 });
     for (const r of rows) {
-      const n = el('div', { class: 'cer-item row', html: lanternSVG(r.label, true) });
-      shelf.append(n);
+      shelf.append(el('div', { class: 'cer-item row', html: lanternSVG(r.label, true) }));
       A.chime(2); petals(16);
-      await wait(900);
+      await wait(1100);
     }
     for (const t of earned.slice(0, 12)) {
-      const n = el('div', { class: 'cer-item', html: trophySVG(t.h, t.level) },
-        el('div', { class: 'cer-label' }, ['', 'Bronze', 'Silver', 'Gold'][t.level]));
-      shelf.append(n);
+      shelf.append(el('div', { class: 'cer-item', html: trophySVG(t.h, t.level) },
+        el('div', { class: 'cer-label' }, ['', 'Bronze', 'Silver', 'Gold'][t.level])));
       A.chime(t.level >= 2 ? 1 : 0);
       if (t.level === 3) petals(10);
-      await wait(650);
+      await wait(800);
     }
     const next = el('button', { class: 'btn big' }, 'Next');
     v.append(el('div', { class: 'center' }, next));
@@ -212,11 +263,10 @@ async function stampEnd(s) {
     el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, `Great work today! You got ${s.correctCount} right.`)),
     card,
     el('div', { class: 'center' }, done));
-  await wait(600);
+  await wait(700);
   A.stampThunk();
   card.querySelector('.stamp.new')?.classList.add('land');
-  await wait(500);
-  A.say('ganbatta');
+  A.say('ganbatta', { lead: 700 });
   done.onclick = () => showHome();
 }
 
@@ -233,80 +283,254 @@ function stampCard(p, animateLast = false) {
       el('div', { class: 'stamp' + (isNew ? ' new' : ''), style: { '--r': ((st.date % 17) - 8) + 'deg' } }, st.h));
   });
   return el('div', { class: 'stamp-card' },
-    el('div', { class: 'stamp-card-title' }, `Stamp card ${cardIdx + 1}`, el("span", {}, `${total} ${total === 1 ? "adventure" : "adventures"}`)),
+    el('div', { class: 'stamp-card-title' }, `Stamp card ${cardIdx + 1}`, el('span', {}, `${total} ${total === 1 ? 'adventure' : 'adventures'}`)),
     el('div', { class: 'stamp-grid' }, ...slots));
 }
 
-// ================= Free play =================
-const GAMES = [
-  { id: 'listen', name: 'Listen & Pick', emoji: '👂', min: 2 },
-  { id: 'detective', name: 'Sound Detective', emoji: '🔍', min: 2 },
-  { id: 'trace', name: 'Trace', emoji: '✍️', min: 1 },
-  { id: 'picwrite', name: 'Picture Write', emoji: '🖼️', min: 1 },
-  { id: 'goldfish', name: 'Goldfish Scoop', emoji: '🐟', min: 2 },
-  { id: 'spot', name: 'Spot the Different One', emoji: '👀', min: 2 },
-  { id: 'river', name: 'Stepping Stones', emoji: '🪨', words: 2 },
-  { id: 'sushi', name: 'Sushi Train', emoji: '🍣', words: 2 },
-  { id: 'memory', name: 'Memory Match', emoji: '🃏', min: 2 },
-  { id: 'karuta', name: 'Karuta', emoji: '🎴', min: 4 },
-];
-const COUNTS = { trace: 4, picwrite: 4, detective: 6, spot: 5, river: 3, sushi: 4 };
-function showFreePlay() {
-  const p = profile;
-  const pool = introduced(p);
-  const nWords = playableWords(pool).length;
-  const grid = el('div', { class: 'game-grid g10' }, ...GAMES.map((g) => {
-    const ok = g.words ? nWords >= g.words : pool.length >= g.min;
-    const b = el('button', { class: 'game-tile' + (ok ? '' : ' locked'), disabled: !ok },
-      el('span', { class: 'emoji' }, g.emoji), el('span', { class: 'gname' }, g.name),
-      ok ? null : el('span', { class: 'need' }, g.words ? 'Learn a few more hiragana' : `Learn ${g.min} hiragana`));
-    b.onclick = () => (g.id === 'karuta' ? showKarutaSetup() : runSingle(g.id));
-    return b;
-  }));
-  screen('freeplay', el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, 'Free play')), grid);
+// ================= Hiragana chart (五十音) =================
+// Columns are the rows あ か さ …, top to bottom the vowels a i u e o.
+const VOWEL = { a: 0, i: 1, u: 2, e: 3, o: 4 };
+function chartPos(h) {
+  const r = kana(h).r;
+  if (h === 'ん') return 2;
+  if (h === 'を') return 4;
+  return VOWEL[r[r.length - 1]];
+}
+const canPractise = (p, h) => isIntroduced(p, h) || S.settings().openAll;
+
+function chartGrid(p, { cell = 'lg', selected = null, onCell, onColumn } = {}) {
+  const grid = el('div', { class: `chart chart-${cell}` });
+  ROW_CHARS.forEach((r, ci) => {
+    const col = el('div', { class: 'chart-col' });
+    const head = el('button', { class: 'chart-head kana' + (rowUnlocked(p, ci) ? '' : ' locked') }, r.label);
+    if (onColumn) head.onclick = () => onColumn(r, ci);
+    col.append(head);
+    const slots = Array(5).fill(null);
+    r.chars.forEach((h) => { slots[chartPos(h)] = h; });
+    slots.forEach((h) => {
+      if (!h) { col.append(el('div', { class: 'chart-cell empty' })); return; }
+      const met = isIntroduced(p, h);
+      const st = stepOf(p, h);
+      const cls = ['chart-cell', met ? 'met' : 'unmet', st >= MASTERED ? 'mastered' : '', selected && selected.has(h) ? 'sel' : '',
+        !canPractise(p, h) ? 'locked' : ''].join(' ');
+      const b = el('button', { class: cls, 'data-h': h, style: { '--prog': mastery(p, h) } },
+        el('span', { class: 'kana' }, h), met && st >= MASTERED ? el('span', { class: 'chart-star' }, '⭐') : null);
+      onTap(b, () => onCell && onCell(h, b));
+      col.append(b);
+    });
+    grid.append(col);
+  });
+  return grid;
 }
 
-async function runSingle(id) {
+function showChart() {
   const p = profile;
-  const pool = introduced(p);
+  const met = introduced(p).length;
+  const mastered = introduced(p).filter((h) => stepOf(p, h) >= MASTERED).length;
+  screen('chart',
+    el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, 'My Hiragana'),
+      el('div', { class: 'chart-count' }, `${met} met · ${mastered} ⭐`)),
+    chartGrid(p, { onCell: (h) => showCharCard(h, showChart) }),
+    el('p', { class: 'hint-text center' }, 'Tap a hiragana to see its path and practise it.'));
+}
+
+// ================= Character card =================
+function showCharCard(h, back) {
+  const p = profile;
+  const k = kana(h);
+  const met = isIntroduced(p, h);
+  const big = el('div', { class: 'cc-big', html: animatedKanaSVG(h, { perStroke: 0.9 }) });
+  onTap(big, () => { big.innerHTML = animatedKanaSVG(h, { perStroke: 0.9 }); A.tapKana(h); });
+  const sp = el('button', { class: 'speaker lg', html: speakerIcon(), 'aria-label': 'Play sound' });
+  onTap(sp, () => A.tapKana(h));
+  const word = el('button', { class: 'cc-word' }, el('span', { class: 'emoji' }, k.emoji),
+    el('span', { class: 'jp' }, ...[...k.word].map((c, i) => el('span', { class: i === k.idx ? 'hl' : '' }, c))));
+  onTap(word, () => A.tapWord(h));
+  const lvl = p.trophies[h] || 0;
+  const actions = el('div', { class: 'cc-actions' });
+  if (canPractise(p, h)) {
+    const go = el('button', { class: 'btn big' }, `Practise ${h}`);
+    go.onclick = () => runDojo('mixed', [h], () => showCharCard(h, back));
+    const tr = el('button', { class: 'btn soft' }, '✍️ Writing practice');
+    tr.onclick = () => runDojo('trace', [h], () => showCharCard(h, back));
+    actions.append(go, tr);
+  } else {
+    actions.append(el('p', { class: 'hint-text' }, 'You’ll meet this one on an adventure soon!'));
+  }
+  const st = met ? stepOf(p, h) : -1;
+  const now = st >= MASTERED ? 'Mastered! ⭐' : st >= 0 ? `Now: ${STEPS[st].icon} ${STEPS[st].name}` : 'Not met yet';
+  screen('charcard',
+    el('div', { class: 'topline' }, backBtn(back), el('h2', {}, el('span', { class: 'kana' }, h), S.settings().romaji ? ` (${k.r})` : '')),
+    el('div', { class: 'cc-body' },
+      el('div', { class: 'cc-left' }, big, sp),
+      el('div', { class: 'cc-right' },
+        el('div', { class: 'cc-top' }, word, el('div', { class: 'cc-trophy', html: trophySVG(h, lvl, undefined, met) })),
+        el('div', { class: 'cc-now' }, now),
+        pathStones(p, h),
+        actions)));
+  A.sayKana(h, { lead: 300 });
+}
+
+// ================= Dojo: practise your own pick =================
+const DOJO_GAMES = [
+  { id: 'mixed', name: 'Mixed', emoji: '🎲' },
+  { id: 'trace', name: 'Write it', emoji: '✍️' },
+  { id: 'listen', name: 'Listen & Pick', emoji: '👂', pool: 2 },
+  { id: 'goldfish', name: 'Goldfish', emoji: '🐟', pool: 2 },
+  { id: 'detective', name: 'Sound Detective', emoji: '🔍', pool: 2 },
+  { id: 'spot', name: 'Spot the Different', emoji: '👀', pool: 2 },
+  { id: 'picwrite', name: 'Picture Write', emoji: '🖼️' },
+  { id: 'dictation', name: 'Dictation', emoji: '📝' },
+  { id: 'readmatch', name: 'Read & Match', emoji: '📖', words: 1 },
+  { id: 'sushi', name: 'Sushi Train', emoji: '🍣', words: 1 },
+  { id: 'river', name: 'Stepping Stones', emoji: '🪨', words: 1 },
+  { id: 'memory', name: 'Memory', emoji: '🃏', pool: 2 },
+  { id: 'karuta', name: 'Karuta', emoji: '🎴', pool: 4 },
+];
+function dojoPool(p, sel) { return [...new Set([...introduced(p), ...sel])]; }
+function wordsFor(pool, sel) {
+  return playableWords(pool, { max: 4 }).filter((w) => [...w.w].some((c) => sel.includes(c)));
+}
+function gameOK(g, p, sel) {
+  if (!sel.length) return false;
+  const pool = dojoPool(p, sel);
+  if (g.pool && pool.length < g.pool) return false;
+  if (g.words && wordsFor(pool, sel).length < g.words) return false;
+  return true;
+}
+
+function showDojo() {
+  const p = profile;
+  const known = introduced(p);
+  let sel = new Set((p.dojoSel || []).filter((h) => canPractise(p, h)));
+  if (!sel.size && known.length) sel = new Set(known.slice(-Math.min(3, known.length)));
+  const info = el('div', { class: 'dojo-sel' });
+  const tiles = el('div', { class: 'dojo-games' });
+  let grid;
+  const refresh = () => {
+    p.dojoSel = [...sel];
+    S.save();
+    grid.querySelectorAll('.chart-cell[data-h]').forEach((c) => c.classList.toggle('sel', sel.has(c.dataset.h)));
+    info.replaceChildren(sel.size ? el('span', {}, 'Practising: ', el('b', { class: 'kana' }, [...sel].join(' '))) : el('span', {}, 'Tap the hiragana you want to practise'));
+    const s = [...sel];
+    tiles.replaceChildren(...DOJO_GAMES.map((g) => {
+      const ok = gameOK(g, p, s);
+      const b = el('button', { class: 'dojo-tile' + (ok ? '' : ' off'), disabled: !ok }, el('span', { class: 'emoji' }, g.emoji), el('span', {}, g.name));
+      b.onclick = () => (g.id === 'karuta' ? showKarutaSetup(s) : runDojo(g.id, s, showDojo));
+      return b;
+    }));
+  };
+  grid = chartGrid(p, {
+    cell: 'sm',
+    selected: sel,
+    onCell: (h) => {
+      if (!canPractise(p, h)) { A.tok(); return; }
+      if (sel.has(h)) sel.delete(h); else sel.add(h);
+      A.tapKana(h);
+      refresh();
+    },
+    onColumn: (r) => {
+      const ok = r.chars.filter((h) => canPractise(p, h));
+      if (!ok.length) return;
+      const all = ok.every((h) => sel.has(h));
+      ok.forEach((h) => (all ? sel.delete(h) : sel.add(h)));
+      refresh();
+    },
+  });
+  const chip = (label, fn) => { const b = el('button', { class: 'chip' }, label); b.onclick = () => { fn(); refresh(); }; return b; };
+  const chips = el('div', { class: 'dojo-chips' },
+    chip('😵 My tricky ones', () => { sel = new Set([...known].sort((a, b) => mastery(p, a) - mastery(p, b)).slice(0, 5)); }),
+    chip('🌈 Everything I know', () => { sel = new Set(known); }),
+    chip('🧹 Clear', () => { sel = new Set(); }),
+    el('p', { class: 'small' }, 'Tip: tap a column letter (あ, か…) to pick a whole row.'));
+  screen('dojo',
+    el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, 'Dojo 道場'), info),
+    el('div', { class: 'dojo-top' }, grid, chips),
+    tiles);
+  refresh();
+}
+
+// Run one Dojo game (or a short mix) on the chosen characters.
+async function runDojo(type, sel, back) {
+  const p = profile;
+  const pool = dojoPool(p, sel);
   A.preloadChars(pool);
-  const s = new Session({ profile: p, root: app, steps: 1, onExit: showFreePlay });
+  const steps = [];
+  // With "Open all hiragana", a character that hasn't been met yet is met first.
+  sel.filter((h) => !isIntroduced(p, h)).slice(0, 3).forEach((h) => steps.push({ type: 'meet', h }));
+  if (type === 'mixed') steps.push(...mixFor(p, pool, sel));
+  else steps.push({ type, only: sel, count: (COUNTS[type] || 6) });
+  const s = new Session({ profile: p, root: app, steps: steps.length, onExit: back });
   try {
-    await runStep(s, { type: id, count: COUNTS[id] || 8 }, pool, []);
+    for (const st of steps) {
+      if (st.type !== 'meet' && st.only) st.only = st.only.filter((h) => isIntroduced(p, h) || sel.includes(h));
+      await runStep(s, st, pool);
+      if (s.exited) return;
+      s.nextStep();
+    }
   } catch (e) {
     if (e instanceof ExitError) return;
     throw e;
   }
+  s.end();
+  await stepsSummary(s.climbed);
   await trophyCeremony(updateTrophies(p));
-  showFreePlay();
+  dojoEnd(type, sel, back);
 }
 
-function showKarutaSetup() {
+// A short mix that fits where the chosen characters are on their paths.
+function mixFor(p, pool, sel) {
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const lo = Math.min(...sel.map((h) => (isIntroduced(p, h) ? stepOf(p, h) : 1)));
+  const out = [];
+  if (lo <= L.S.copy) out.push({ type: 'trace', only: sel, count: Math.min(3, sel.length + 1) });
+  if (pool.length >= 2) out.push({ type: pick(['listen', 'goldfish']), only: sel, count: 4 });
+  if (pool.length >= 2) out.push({ type: pick(['detective', 'spot']), only: sel, count: 4 });
+  if (lo > L.S.copy) out.push({ type: pick(['picwrite', 'dictation']), only: sel, count: 2 });
+  if (wordsFor(pool, sel).length) out.push({ type: pick(['readmatch', 'sushi']), only: sel, count: 3 });
+  if (!out.length) out.push({ type: 'trace', only: sel, count: 2 });
+  return out.slice(0, 4);
+}
+
+function dojoEnd(type, sel, back) {
+  const again = el('button', { class: 'btn big' }, 'Again!');
+  again.onclick = () => runDojo(type, sel, back);
+  const other = el('button', { class: 'btn soft' }, 'Back');
+  other.onclick = back;
+  screen('dojo-end', mochi('happy', 'lg'), el('div', { class: 'bubble' }, 'Nice practice!'),
+    el('div', { class: 'row-btns center' }, other, again));
+  A.say('yokudekimashita', { lead: 300 });
+}
+
+function showKarutaSetup(sel) {
   const p = profile;
   const others = S.profiles().filter((x) => x.id !== p.id);
-  const start = async (players) => {
-    const pool = introduced(p);
-    A.preloadChars(pool);
-    const s = new Session({ profile: p, root: app, steps: 1, onExit: showFreePlay });
-    try {
-      await karuta(s, { pool, boost: [], players });
-    } catch (e) {
-      if (e instanceof ExitError) return;
-      throw e;
-    }
-    for (const pl of players) if (pl.profile && pl.profile !== p) updateTrophies(pl.profile);
-    await trophyCeremony(updateTrophies(p));
-    showFreePlay();
-  };
+  const start = (players) => runDojoKaruta(players, sel);
   const me = { profile: p, name: p.name, avatar: p.avatar };
   const opts = el('div', { class: 'karuta-opts' },
     (() => { const b = el('button', { class: 'game-tile' }, el('span', { class: 'emoji' }, '🐰'), el('span', { class: 'gname' }, 'Play against Mochi')); b.onclick = () => start([me]); return b; })(),
     ...others.map((o) => { const b = el('button', { class: 'game-tile' }, el('span', { class: 'emoji' }, o.avatar), el('span', { class: 'gname' }, `Play with ${o.name}`)); b.onclick = () => start([me, { profile: o, name: o.name, avatar: o.avatar }]); return b; }),
     (() => { const b = el('button', { class: 'game-tile' }, el('span', { class: 'emoji' }, '🧑'), el('span', { class: 'gname' }, 'Play with a grown-up')); b.onclick = () => start([me, { profile: null, name: 'Grown-up', avatar: '🧑' }]); return b; })(),
   );
-  screen('karuta-setup', el('div', { class: 'topline' }, backBtn(showFreePlay), el('h2', {}, 'Karuta かるた')),
+  screen('karuta-setup', el('div', { class: 'topline' }, backBtn(showDojo), el('h2', {}, 'Karuta かるた')),
     el('p', { class: 'hint-text' }, 'Listen to the reader, then grab the right card first! Two players: sit opposite each other with the tablet flat between you.'),
     opts);
+}
+async function runDojoKaruta(players, sel) {
+  const p = profile;
+  const pool = dojoPool(p, sel);
+  A.preloadChars(pool);
+  const s = new Session({ profile: p, root: app, steps: 1, onExit: showDojo });
+  try {
+    await karuta(s, { pool, boost: [], only: sel, players });
+  } catch (e) {
+    if (e instanceof ExitError) return;
+    throw e;
+  }
+  s.end();
+  for (const pl of players) if (pl.profile && pl.profile !== p) updateTrophies(pl.profile);
+  await trophyCeremony(updateTrophies(p));
+  showDojo();
 }
 
 // ================= Trophy room =================
@@ -318,9 +542,10 @@ function showTrophies() {
       el('div', { class: 'shelf-lantern', html: lanternSVG(r.label, !!p.rowTrophies[r.id]) }),
       el('div', { class: 'shelf-items' }, ...r.chars.map((h) => {
         const lvl = p.trophies[h] || 0;
-        const t = el('button', { class: 'trophy', 'aria-label': h, html: trophySVG(h, lvl) });
-        if (S.settings().romaji && lvl) t.append(el('span', { class: 'romaji' }, kana(h).r));
-        if (lvl) onTap(t, () => { A.sayKana(h); t.classList.remove('wiggle'); void t.offsetWidth; t.classList.add('wiggle'); });
+        const met = isIntroduced(p, h);
+        const t = el('button', { class: 'trophy', 'aria-label': h, html: trophySVG(h, lvl, undefined, met) });
+        if (S.settings().romaji && met) t.append(el('span', { class: 'romaji' }, kana(h).r));
+        if (met) onTap(t, () => showCharCard(h, showTrophies));
         return t;
       })));
   });
@@ -329,7 +554,7 @@ function showTrophies() {
     el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, `${p.name}’s Trophy Room`),
       el('div', { class: 'tcount' },
         el('span', { class: 'b' }, `● ${counts[0]}`), el('span', { class: 's' }, `● ${counts[1]}`), el('span', { class: 'g' }, `● ${counts[2]}`))),
-    el('p', { class: 'hint-text' }, 'Bronze: you met it · Silver: getting strong · Gold: whole row mastered'),
+    el('p', { class: 'hint-text' }, 'Bronze: you can copy it · Silver: you can read it · Gold: the whole row can be used in words'),
     el('div', { class: 'shelves' }, ...shelves));
 }
 
@@ -345,26 +570,27 @@ function showParent() {
   const st = S.settings();
   const vol = el('input', { type: 'range', min: 0, max: 1, step: 0.05, value: st.volume });
   vol.oninput = () => S.setSetting('volume', +vol.value);
-  vol.onchange = () => A.sayKana('あ');
+  vol.onchange = () => A.tapKana('あ');
   const toggle = (key, label) => {
     const c = el('input', { type: 'checkbox' });
     c.checked = !!st[key];
     c.onchange = () => S.setSetting(key, c.checked);
     return el('label', { class: 'toggle' }, c, label);
   };
+  const pc = (x) => Math.round((x || 0) * 100) + '%';
   const plist = el('div', { class: 'parent-profiles' }, ...S.profiles().map((p) => {
     const table = el('table', { class: 'progress-table' },
-      el('tr', {}, el('th', {}, ''), el('th', {}, 'Sound'), el('th', {}, 'Hear'), el('th', {}, 'Write'), el('th', {}, 'Overall')),
-      ...KANA.filter((k) => p.chars[k.h] && p.chars[k.h].intro).map((k) => {
-        const c = p.chars[k.h];
-        const pc = (x) => Math.round(x * 100) + '%';
-        return el('tr', {}, el('td', { class: 'kana' }, k.h), el('td', {}, k.r), el('td', {}, pc(c.hear)), el('td', {}, pc(c.write)),
-          el('td', {}, el('span', { class: 'bar', style: { '--v': mastery(p, k.h) } }), pc(mastery(p, k.h))));
+      el('tr', {}, el('th', {}, ''), el('th', {}, 'Sound'), el('th', {}, 'Path step'), el('th', {}, 'Hear'), el('th', {}, 'Read'), el('th', {}, 'Write')),
+      ...KANA.filter((k) => isIntroduced(p, k.h)).map((k) => {
+        const c = charState(p, k.h);
+        const stepTxt = c.step >= MASTERED ? '⭐ Mastered' : `${STEPS[c.step].icon} ${STEPS[c.step].name} (${c.prog}/${STEPS[c.step].need})`;
+        return el('tr', {}, el('td', { class: 'kana' }, k.h), el('td', {}, k.r), el('td', {}, stepTxt),
+          el('td', {}, pc(c.hear)), el('td', {}, pc(c.read)), el('td', {}, pc(c.write)));
       }));
     const locked = ROW_CHARS.findIndex((r, i) => !rowUnlocked(p, i));
     return el('details', { class: 'pp' },
-      el('summary', {}, el('span', { class: 'avatar' }, p.avatar), `${p.name} — ${introduced(p).length} hiragana, ${p.stamps.length} sessions, best streak ${p.bestStreak || 0}`),
-      locked > 0 ? el('p', { class: 'small' }, `Next row (${ROW_CHARS[locked].label}) unlocks when the ${ROW_CHARS[locked - 1].label} row averages ${UNLOCK_NEXT * 100}% and every character in it is at least ${UNLOCK_EACH * 100}%.`) : null,
+      el('summary', {}, el('span', { class: 'avatar' }, p.avatar), `${p.name} — ${introduced(p).length} hiragana, ${p.stamps.length} adventures, best streak ${p.bestStreak || 0}`),
+      locked > 0 ? el('p', { class: 'small' }, `Next row (${ROW_CHARS[locked].label}) opens when every ${ROW_CHARS[locked - 1].label}-row character has passed 👂 Hear it.`) : null,
       table,
       el('div', { class: 'row-btns' },
         holdButton('Hold to reset progress', 2500, () => { S.resetProfile(p.id); showParent(); }, 'warn'),
@@ -375,10 +601,11 @@ function showParent() {
     el('section', { class: 'card-sec' }, el('h3', {}, 'Settings'),
       el('label', { class: 'slider' }, 'Volume', vol),
       toggle('romaji', 'Show romaji hints to kids'),
+      toggle('openAll', 'Open all hiragana in the Dojo (for kids who already know some)'),
       toggle('reducedMotion', 'Calmer animations')),
     el('section', { class: 'card-sec' }, el('h3', {}, 'Players'), plist),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'How it works'),
-      el('p', {}, 'Each Adventure is about 8–10 minutes. Children meet 1–2 new hiragana per session, only when the ones they know are getting solid. Each character tracks two skills: recognising it by sound and writing it. Rows unlock in order (あ → か → さ …). Practising on separate days is what moves a character to silver and gold (a skill can reach 45% on its first day, 65% after two days, 85% after three), because spaced practice is what makes hiragana stick.')),
+      el('p', {}, 'Every hiragana walks its own path: 👀 Meet → ✍️ Trace → 🖍️ Copy → 👂 Hear it → 🔍 Read it → ✏️ Write it → 🍣 Use it → ⭐ Master. Tracing is kept short; copying freehand with a model comes next because forming letters by hand is what builds letter recognition. Recognising by sound and by sight comes before writing from memory (recall is harder than recognition). ⭐ needs correct answers on 3 separate days, because spaced practice is what makes it stick. Adventures (8–10 min) give each character the practice its step needs; the Dojo lets children practise any hiragana they choose.')),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'Credits'),
       el('p', {}, 'Voices: VOICEVOX:四国めたん, VOICEVOX:春日部つむぎ. Stroke data: KanjiVG © Ulrich Apel (CC BY-SA 3.0). Fonts: Klee One (Fontworks), M PLUS Rounded 1c (OFL).')),
   );

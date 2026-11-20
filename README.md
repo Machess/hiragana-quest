@@ -6,32 +6,54 @@ Plain HTML/CSS/JavaScript modules, no build step, no frameworks.
 ## What's in this version
 
 - **Profiles:** one per child, each with an animal avatar and its own progress, trophies and stamp card. Settings and deleting a player sit behind a "hold for 2–3 seconds" grown-up gate.
-- **Adventure (8–10 min):** meet 1–2 new hiragana, then a set of games picked and paced automatically. At the end you get trophies and a hanko stamp.
-- **Games**
-  - **Meet:** animated stroke order, the sound, and a picture word, then trace it 3 times with fading help.
-  - **Trace:** four help levels (full guide with arrows → faded guide → start dot only → from memory). It checks stroke shape, start point, direction and order.
-  - **Listen & Pick:** hear a sound, tap the right character. Choices grow from 2 to 4, and look-alikes (あ/お, き/さ…) are used once the child is ready.
-  - **Picture Write:** see a picture, hear the word (🐜 あり), and write the missing first character.
-  - **Goldfish Scoop (金魚すくい):** scoop the fish carrying the sound you heard.
-  - **Memory Match:** pair characters with the same character, with pictures, or with sounds.
-  - **Sound Detective (🔍):** see a character, listen to 2–3 sound buttons, pick the right one. It practises reading: seeing a character and knowing its sound.
-  - **Spot the Different One (👀):** a grid of one character with one look-alike hidden in it (あ/お, き/さ, ね/れ…). The grid grows from 3×3 to 6×3. Afterwards both sounds are played.
-  - **Sushi Train (回転寿司):** a customer orders a word (🦑 いか). Grab the right plates from the conveyor belt in order to build it.
-  - **Stepping Stones (川渡り):** hear a sound and hop Mochi onto the right stone. Crossing the river spells a word, and its picture appears on the far bank.
-  - **Karuta (かるた):** solo against Mochi (her speed adapts to the child) or two players on one tablet, facing each other.
-- **Celebrations:** a soft chime for each correct answer. Every 5 in a row, a paper lantern lights, petals fall for about 2 seconds and Mochi hops. No buzzers, no lives, no "streak lost" messages.
-- **Trophy room:** bronze = met it, silver = more than 50% mastery, gold = the whole row mastered. A lit lantern appears for each finished row.
+- **Home:** **Adventure** (shows what's coming: "New: か き · Practice: あ い"), **Dojo**, **My Hiragana**, **Trophies**, **Stamps**.
+- **Adventure (8–10 min):** each character gets the practice its path step needs. Afterwards: "Steps you climbed today", trophies, then a hanko stamp.
+- **Dojo (道場):** pick any hiragana on the chart (one, several, a whole row by tapping its column letter, "My tricky ones" or "Everything I know"), then a game or **Mixed**. The game list only enables games that work with the selection. Afterwards: **Again** or **Back**.
+- **My Hiragana:** the 50-sound chart as a collection. Each cell shows its path progress (⭐ when mastered). Tapping one opens its **character card**: stroke animation, sound, picture word, trophy, the path with progress dots, and **Practise あ** (a 2-minute mix for just that character).
 
-## How learning progresses
+## The path (how learning progresses)
 
-- Each character tracks two skills, **hear** (recognise by sound) and **write**. Mastery is their average.
-- **Spacing rule:** a skill can reach 45% on its first day of practice, 65% after two days and 85% after three. This stops cramming from faking mastery.
-- New characters arrive only when the known ones are healthy.
-- The next row unlocks when the current row averages 70% and every character in it is at least 50%.
-- Practice picks weak and not-recently-seen characters more often.
-- Adventures rotate their games: a hearing game (Listen & Pick or Sound Detective), Trace, a moving game (Goldfish or Stepping Stones), Picture Write, then 1–2 bonus games (Memory, Spot the Different One, Sound Detective, Karuta, Sushi Train).
-- **Word bank** (`js/vocab.js`, audio in `audio/vocab/`): 80 words that use only the 46 basic hiragana. Sushi Train and Stepping Stones only ever use words made entirely of characters the child already knows. From あいうえ onwards a few words are available (いえ, あお, うえ, あい), and the list grows with every row.
-- Rows: あ か さ た な は ま や ら わ(を ん). All 46 characters already have audio, stroke data and picture words, so later rows work with no extra content.
+Every hiragana walks its own path:
+
+**👀 Meet → ✍️ Trace → 🖍️ Copy → 👂 Hear it → 🔍 Read it → ✏️ Write it → 🍣 Use it → ⭐ Master**
+
+| Step | Passed when | Practised in |
+|---|---|---|
+| Meet | Seen, heard and traced twice | Meet |
+| Trace | 3 clean traces over the guide | Write it (trace mode) |
+| Copy | 2 good freehand copies with the model beside the pad | Write it (copy mode) |
+| Hear it | 5 right first try | Listen & Pick, Goldfish, Karuta, Memory, Stepping Stones, Sushi Train |
+| Read it | 5 right first try | Sound Detective, Spot the Different One, Read & Match |
+| Write it | 3 good ones from memory | Picture Write, Dictation, Write it (memory mode) |
+| Use it | 4 words built or read with it | Sushi Train, Stepping Stones, Read & Match |
+| ⭐ Master | Right first try on 3 separate days | Anything |
+
+Why this order:
+- Tracing is a short bridge only. Forming letters by hand (copying) builds letter recognition; tracing alone doesn't (James & Engelhardt, 2012).
+- Recognition by sound, then by sight, comes before writing from memory, because recall is harder than recognition. Quizzing with a prompt and instant feedback works for young children once the basics are in.
+- ⭐ needs separate days, because spaced practice is what makes it stick.
+
+**Rules**
+- First-try answers are **banked** per skill. Practice done "early" counts as soon as a character reaches that step, so children can climb several stones at once. The order of the path is always kept.
+- Wrong answers never take progress away.
+- New characters arrive 1–2 at a time, only while at most 3 known characters are still before 👂 Hear it.
+- The **next row opens** when every character in the row before has passed 👂 Hear it.
+- **Trophies:** bronze = passed Copy, silver = passed Read it, gold = the whole row passed Use it. A lit lantern marks each finished row. Earned trophies are never taken away.
+- Older saves are placed on the path automatically.
+- A grown-up setting **Open all hiragana in the Dojo** lets kids who already know some practise any character. Unmet ones get a Meet first.
+
+## Games
+- **Meet:** animated stroke order, the sound and a picture word, then two traces.
+- **Write it:** one pad, three ways (trace over a guide / copy with the model beside it / from memory). It checks stroke shape, start point, direction and order. Bulb = show me, undo for memory mode.
+- **Listen & Pick**, **Goldfish Scoop (金魚すくい)**, **Memory Match**, **Karuta (かるた)** (solo vs Mochi or two players facing each other).
+- **Sound Detective** (see → pick the sound) and **Spot the Different One** (find the look-alike in a grid).
+- **Picture Write** (🐜 ?り → write あ) and **Dictation** (hear a sound, write it, no picture).
+- **Read & Match** (read a word with no sound, tap its picture), **Sushi Train (回転寿司)** and **Stepping Stones (川渡り)**.
+- **Word bank** (`js/vocab.js`, audio in `audio/vocab/`): 80 words using only the 46 basic hiragana. Word games only use words made entirely of characters the child knows.
+
+## Calm by design
+- **Speech never overlaps or rushes.** Every clip waits for the one before it, plus a natural pause (about 0.65 s). Meet goes "あたらしい ひらがなだよ!" … あ … あり with longer pauses. Taps on a speaker button answer immediately.
+- **Celebrations:** a soft chime for a right answer. Every 5 in a row, a lantern lights, a few petals fall and Mochi hops. A character climbing a stone gets a small "あ → 🔍 Read it" moment. No buzzers, no lives, no "streak lost".
 
 ## Built for the 10" Lenovo tablet
 
@@ -74,14 +96,16 @@ Capacitor serves the files from `https://localhost`, so modules and audio work a
 ```
 index.html, manifest.webmanifest, sw.js   PWA shell + offline cache (sw.js lists every file)
 css/style.css                             all styling (washi paper / indigo / vermilion theme)
-js/main.js        screens: profiles, home, adventure runner, free play, trophies, stamps, parent area
-js/session.js     game shell, streaks + celebrations, adventure planner
-js/learn.js       mastery model, spacing rule, unlocks, trophies, look-alike distractors
+js/main.js        screens: profiles, home, adventure runner, chart, character card, Dojo, trophies, stamps, parent area
+js/session.js     game shell, streaks, step-up moments, adventure planner (by path step)
+js/learn.js       the path model (steps, banked answers, ⭐ days), unlocks, trophies, look-alike distractors
 js/trace.js       tracing engine (KanjiVG stroke templates, checking, demos)
-js/audio.js       Web Audio playback + soft synthesized chimes
+js/audio.js       Web Audio speech queue (calm pacing) + soft synthesized chimes
 js/ui.js          helpers, Mochi mascot SVG, trophy/lantern SVGs, petals, grown-up gate
-js/games/core.js  Meet, Trace, Listen & Pick, Picture Write
+js/games/core.js  Meet, the writing pad (trace/copy/memory), Listen & Pick, Picture Write, Dictation
 js/games/extra.js Goldfish Scoop, Memory Match, Karuta
+js/games/more.js  Sound Detective, Spot the Different One, Sushi Train, Stepping Stones, Read & Match
+js/vocab.js       80-word bank (generated)
 js/data.js        46 kana, picture words, rows, stroke paths (generated)
 audio/kana|words|voice/   pre-generated Japanese speech (mp3)
 fonts/            Klee One (textbook-style kana), M PLUS Rounded 1c (UI) — subsetted woff2
