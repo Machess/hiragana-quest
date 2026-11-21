@@ -63,7 +63,7 @@ export function deleteProfile(id) {
 export function resetProfile(id) {
   const p = getProfile(id);
   if (!p) return;
-  Object.assign(p, { chars: {}, trophies: {}, rowTrophies: {}, stamps: [], mochiSpeed: 5200, bestStreak: 0, dojoSel: [] });
+  Object.assign(p, { chars: {}, trophies: {}, rowTrophies: {}, stamps: [], mochiSpeed: 5200, bestStreak: 0, dojoSel: [], coins: 0, coinProg: 0, owned: [], look: {}, wish: null });
   save();
 }
 

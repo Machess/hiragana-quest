@@ -161,6 +161,13 @@ export function tok() {
   const t = c.currentTime + 0.005;
   tone(330, t, 0.12, 0.06, 'triangle');
 }
+// Soft coin clink for earning a koban.
+export function clink() {
+  const c = ac();
+  const t = c.currentTime + 0.01;
+  tone(1975, t, 0.25, 0.05);
+  tone(2637, t + 0.07, 0.35, 0.045);
+}
 export function stampThunk() {
   const c = ac();
   const t = c.currentTime + 0.005;

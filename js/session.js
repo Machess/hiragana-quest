@@ -2,6 +2,8 @@
 // and the adventure planner that strings games together.
 import { el, mochi, petals, icon, wait, toast, overlay, keepAwake } from './ui.js';
 import { safeScreen } from './update.js';
+import { countAnswer, addCoins, EARN, balance } from './wardrobe.js';
+import { kobanPill } from './ui.js';
 import * as A from './audio.js';
 import { introduced, newCharsForSession, updateTrophies, playableWords, onStepUp, stepOf, S, STEPS, MASTERED } from './learn.js';
 import { save } from './store.js';
@@ -28,7 +30,9 @@ export class Session {
     for (let i = 0; i < 5; i++) this.lanternBar.append(el('span', { class: 'lamp' }));
     const homeBtn = el('button', { class: 'icon-btn', 'aria-label': 'Leave', html: icon('home') });
     homeBtn.addEventListener('click', () => this.askExit());
-    this.top = el('header', { class: 'game-top' }, homeBtn, this.stones, this.lanternBar, this.mini);
+    this.coinsEarned = 0;
+    this.coinPill = kobanPill(balance(profile), 'game');
+    this.top = el('header', { class: 'game-top' }, homeBtn, this.stones, this.coinPill, this.lanternBar, this.mini);
     this.stage = el('main', { class: 'stage' });
     this.node = el('div', { class: 'screen game-screen' }, this.top, this.stage);
     root.replaceChildren(this.node);
@@ -52,7 +56,17 @@ export class Session {
     return v;
   }
 
-  correct(h) {
+  // A koban was earned: the counter in the top bar gives a small bump and a soft clink.
+  earned(n) {
+    if (!n) return;
+    this.coinsEarned += n;
+    this.coinPill.querySelector('b').textContent = balance(this.p);
+    this.coinPill.classList.remove('bump'); void this.coinPill.offsetWidth; this.coinPill.classList.add('bump');
+    setTimeout(() => A.clink(), 250);
+  }
+  // prof: who answered (two-player Karuta credits the winner; a guest earns nothing).
+  correct(h, prof = this.p) {
+    if (prof) { const n = countAnswer(prof); if (prof === this.p) this.earned(n); }
     this.streak++;
     this.correctCount++;
     if (h) this.practiced[h] = (this.practiced[h] || 0) + 1;
@@ -77,6 +91,7 @@ export class Session {
   // A character moved one stone along its path: a small, calm moment.
   stepUp({ h, from, to }) {
     this.climbed.push({ h, from, to });
+    this.earned(addCoins(this.p, to >= MASTERED ? EARN.master : EARN.step));
     const st = STEPS[to];
     const label = to >= MASTERED ? 'Mastered!' : `${st.icon} ${st.name}`;
     setTimeout(() => {
@@ -166,8 +181,9 @@ export function finishSession(p, s, fresh) {
   const stampChar = fresh[0] || top[0] || 'あ';
   p.stamps.push({ date: Date.now(), h: stampChar, chars: [...new Set([...fresh, ...top.slice(0, 4)])] });
   save();
+  s.earned(addCoins(p, EARN.adventure + rows.length * EARN.row));
   s.end();
-  return { earned, rows, stampChar, climbed: s.climbed };
+  return { earned, rows, stampChar, climbed: s.climbed, coins: s.coinsEarned };
 }
 
 export { wait };

@@ -6,6 +6,7 @@ build machine (`/home/claude/...`), so adjust those before running.
 - `make_content.py` → `content.json`: hiragana list, picture words, rows and Mochi's lines
 - `gen_audio.py`: hiragana, picture-word and Mochi audio via VOICEVOX Core 0.16 (`kana-only` regenerates just the hiragana)
 - `vocab.py` → `js/vocab.js` + `vocab.json`; `gen_vocab_audio.py` makes `audio/vocab/*`
+- `gen_wardrobe_audio.py`: Mochi saying each wardrobe item name (audio/wardrobe/*)
 - `normalize.py`, then `even_out.py`: level all speech clips (run after generating any audio)
 - `build.py`: writes `sw.js` (every file + fingerprint) and `version.json` with the note from `release-notes.txt`. Run after ANY change; `HQ_ROOT=/path` builds another folder; `build.py icons` also renders the app icons
 - `sw.template.js`: the service worker source (offline cache + updates)

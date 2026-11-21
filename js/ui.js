@@ -1,5 +1,6 @@
 // Small DOM helpers, the Mochi mascot, trophies, celebrations.
 import { settings } from './store.js';
+import { palette, hatLayer, heldLayer, reactionOf, celebrationOf } from './wardrobe.js';
 
 export function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
@@ -59,41 +60,79 @@ export function onTap(node, fn) {
 }
 
 // ---------- Mochi, the mascot (original character: a round rice-cake bunny) ----------
-export function mochiSVG(mood = 'idle') {
+// Mochi wears the current player's look (colour, hat, held item) everywhere.
+let LOOK = null;
+export function setLook(look) { LOOK = look || null; }
+export const currentLook = () => LOOK;
+
+export function mochiSVG(mood = 'idle', look = LOOK) {
+  const pal = palette(look);
+  const ink = '#3b3355';
   const eyes = mood === 'sleepy'
-    ? '<path d="M38 58 q6 5 12 0 M70 58 q6 5 12 0" stroke="#3b3355" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
+    ? `<path d="M38 58 q6 5 12 0 M70 58 q6 5 12 0" stroke="${ink}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`
     : mood === 'happy'
-      ? '<path d="M38 60 q6 -8 12 0 M70 60 q6 -8 12 0" stroke="#3b3355" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
-      : '<ellipse cx="44" cy="58" rx="4.6" ry="6" fill="#3b3355"/><ellipse cx="76" cy="58" rx="4.6" ry="6" fill="#3b3355"/>' +
-        '<circle cx="45.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="77.6" cy="55.6" r="1.6" fill="#fff"/>';
-  const mouth = mood === 'happy'
+      ? `<path d="M38 60 q6 -8 12 0 M70 60 q6 -8 12 0" stroke="${ink}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`
+      : mood === 'wink'
+        ? `<path d="M38 60 q6 -8 12 0" stroke="${ink}" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+           <ellipse cx="76" cy="58" rx="4.6" ry="6" fill="${ink}"/><circle cx="77.6" cy="55.6" r="1.6" fill="#fff"/>`
+        : mood === 'stars'
+          ? ['44', '76'].map((x) => `<path transform="translate(${x} 58)" d="M0 -8 L2.2 -2.4 L8 -2.4 L3.4 1.2 L5 7 L0 3.6 L-5 7 L-3.4 1.2 L-8 -2.4 L-2.2 -2.4 Z" fill="#e8b923" stroke="${ink}" stroke-width="1"/>`).join('')
+          : `<ellipse cx="44" cy="58" rx="4.6" ry="6" fill="${ink}"/><ellipse cx="76" cy="58" rx="4.6" ry="6" fill="${ink}"/>` +
+            '<circle cx="45.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="77.6" cy="55.6" r="1.6" fill="#fff"/>';
+  const mouth = mood === 'happy' || mood === 'stars' || mood === 'wink'
     ? '<path d="M53 70 q7 9 14 0 z" fill="#c8506a"/>'
-    : '<path d="M54 70 q6 5 12 0" stroke="#3b3355" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    : `<path d="M54 70 q6 5 12 0" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  const hat = hatLayer(look);
   return `<svg viewBox="0 0 120 120" class="mochi-svg" aria-hidden="true">
     <ellipse cx="60" cy="112" rx="34" ry="5" fill="#000" opacity=".08"/>
     <g class="mochi-ears">
-      <path d="M36 44 C26 10 34 2 42 6 C50 10 52 30 50 44 Z" fill="#fffdf8" stroke="#e8dccb" stroke-width="2"/>
-      <path d="M40 38 C34 18 38 12 42 13 C46 15 47 28 46 38 Z" fill="#f6c4cf"/>
-      <path d="M84 44 C94 10 86 2 78 6 C70 10 68 30 70 44 Z" fill="#fffdf8" stroke="#e8dccb" stroke-width="2"/>
-      <path d="M80 38 C86 18 82 12 78 13 C74 15 73 28 74 38 Z" fill="#f6c4cf"/>
+      <path d="M36 44 C26 10 34 2 42 6 C50 10 52 30 50 44 Z" fill="${pal.body}" stroke="${pal.line}" stroke-width="2"/>
+      <path d="M40 38 C34 18 38 12 42 13 C46 15 47 28 46 38 Z" fill="${pal.ear}"/>
+      <path d="M84 44 C94 10 86 2 78 6 C70 10 68 30 70 44 Z" fill="${pal.body}" stroke="${pal.line}" stroke-width="2"/>
+      <path d="M80 38 C86 18 82 12 78 13 C74 15 73 28 74 38 Z" fill="${pal.ear}"/>
     </g>
-    <path d="M14 82 C14 50 34 36 60 36 C86 36 106 50 106 82 C106 104 86 110 60 110 C34 110 14 104 14 82 Z" fill="#fffdf8" stroke="#e8dccb" stroke-width="2.5"/>
-    <ellipse cx="32" cy="72" rx="8" ry="5" fill="#f6b7c4" opacity=".75"/>
-    <ellipse cx="88" cy="72" rx="8" ry="5" fill="#f6b7c4" opacity=".75"/>
+    <path d="M14 82 C14 50 34 36 60 36 C86 36 106 50 106 82 C106 104 86 110 60 110 C34 110 14 104 14 82 Z" fill="${pal.body}" stroke="${pal.line}" stroke-width="2.5"/>
+    <ellipse cx="32" cy="72" rx="8" ry="5" fill="${pal.cheek}" opacity=".75"/>
+    <ellipse cx="88" cy="72" rx="8" ry="5" fill="${pal.cheek}" opacity=".75"/>
     ${eyes}${mouth}
-    <path d="M52 40 q8 -8 16 0" stroke="#7fb069" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <circle cx="60" cy="34" r="4.5" fill="#7fb069"/>
+    ${/h-(straw|knit|detective|kabuto)/.test(hat) ? '' : `<path d="M52 40 q8 -8 16 0" stroke="#7fb069" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="60" cy="34" r="4.5" fill="#7fb069"/>`}
+    ${hat}${heldLayer(look)}
     ${mood === 'sleepy' ? '<text x="92" y="30" font-size="16" fill="#8a8fb3" font-family="sans-serif">z</text><text x="102" y="18" font-size="12" fill="#8a8fb3" font-family="sans-serif">z</text>' : ''}
   </svg>`;
 }
 
-export function mochi(mood = 'idle', size = 'md') {
-  const m = el('div', { class: `mochi mochi-${size} mood-${mood}`, html: mochiSVG(mood) });
-  m.setMood = (md) => { m.className = `mochi mochi-${size} mood-${md}`; m.innerHTML = mochiSVG(md); };
-  m.hop = () => {
+// mochi(mood, size, look?) — look defaults to the current player's.
+export function mochi(mood = 'idle', size = 'md', look) {
+  const m = el('div', { class: `mochi mochi-${size} mood-${mood}` });
+  let current = mood;
+  const lk = () => (look === undefined ? LOOK : look);
+  const draw = (md) => { m.className = `mochi mochi-${size} mood-${md}`; m.innerHTML = mochiSVG(md, lk()); };
+  draw(mood);
+  m.setMood = (md) => { current = md; draw(md); };
+  m.setLook = (l) => { look = l; draw(current); };
+  // The player's chosen reaction (default: a happy hop).
+  m.react = (forced) => {
     if (reduced()) return;
-    m.classList.remove('hop'); void m.offsetWidth; m.classList.add('hop');
+    const r = forced || reactionOf(lk());
+    const anim = { 'r-hop': 'hop', 'r-jump': 'jump', 'r-jiggle': 'jiggle', 'r-spin': 'spin', 'r-bow': 'bow', 'r-wink': 'hop', 'r-sparkle': 'hop' }[r] || 'hop';
+    ['hop', 'jump', 'jiggle', 'spin', 'bow'].forEach((c) => m.classList.remove(c));
+    void m.offsetWidth;
+    m.classList.add(anim);
+    if (r === 'r-wink' || r === 'r-sparkle') {
+      const back = current;
+      draw(r === 'r-wink' ? 'wink' : 'stars');
+      if (r === 'r-sparkle') {
+        for (let i = 0; i < 5; i++) {
+          const sp = el('span', { class: 'sparkle', style: { left: `${10 + Math.random() * 80}%`, top: `${Math.random() * 60}%`, animationDelay: `${i * 0.12}s` } }, '✦');
+          m.append(sp);
+          setTimeout(() => sp.remove(), 1400);
+        }
+      }
+      setTimeout(() => { if (m.isConnected) draw(back); }, 1300);
+    }
   };
+  m.hop = () => m.react();
   return m;
 }
 
@@ -135,16 +174,18 @@ export function lanternSVG(label, lit) {
 }
 
 // ---------- Celebrations (short, soft, no flashing) ----------
-export function petals(count = 14) {
+export function petals(count = 14, style = null) {
   if (reduced()) count = Math.min(count, 4);
+  const kind = style || celebrationOf(LOOK);
   const layer = el('div', { class: 'petal-layer' });
   for (let i = 0; i < count; i++) {
-    const p = el('div', { class: 'petal' });
+    const p = el('div', { class: `petal ${kind}` });
     p.style.left = Math.random() * 1280 + 'px';
     p.style.animationDelay = Math.random() * 0.6 + 's';
     p.style.animationDuration = 2 + Math.random() * 1.2 + 's';
     p.style.setProperty('--drift', (Math.random() * 120 - 60) + 'px');
     p.style.setProperty('--spin', (Math.random() * 360 + 180) + 'deg');
+    if (kind === 'e-cranes') p.style.setProperty('--c', ['#f6b7c4', '#9cc8e8', '#ffe08a', '#b9dca0'][i % 4]);
     layer.append(p);
   }
   overlay().append(layer);
@@ -179,6 +220,19 @@ export function holdButton(label, ms, onDone, cls = '') {
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, cancel));
   b.addEventListener('contextmenu', (e) => e.preventDefault());
   return b;
+}
+
+// A koban: an old oval gold coin, Mochi's currency.
+export function kobanSVG(cls = '') {
+  return `<svg viewBox="0 0 40 52" class="koban ${cls}" aria-hidden="true">
+    <ellipse cx="20" cy="26" rx="18" ry="24" fill="#f3cf4a" stroke="#c99512" stroke-width="2.5"/>
+    <ellipse cx="20" cy="26" rx="12.5" ry="18" fill="none" stroke="#e0b52a" stroke-width="1.5"/>
+    ${[13, 18, 23, 28, 33, 38].map((y) => `<path d="M12 ${y} H28" stroke="#d9a91c" stroke-width="1.3"/>`).join('')}
+    <ellipse cx="14" cy="16" rx="3" ry="5" fill="#fff" opacity=".5"/>
+  </svg>`;
+}
+export function kobanPill(n, cls = '') {
+  return el('span', { class: `koban-pill ${cls}` }, el('span', { html: kobanSVG() }), el('b', {}, String(n)));
 }
 
 export function speakerIcon() {

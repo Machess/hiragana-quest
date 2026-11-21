@@ -276,7 +276,7 @@ export async function karuta(s, { pool, boost = [], only = null, players }) {
       sides[winner].cardNodes[h].classList.add('won');
       const pr = players[winner].profile;
       if (pr) record(pr, h, 'hear', true, 0.15);
-      s.correct(h);
+      s.correct(h, players[winner].profile);
       A.say('totta', { lead: 300 });
       if (solo) { s.p.mochiSpeed = Math.max(2200, (s.p.mochiSpeed || 5200) - 150); save(); }
     } else {

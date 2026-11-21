@@ -51,6 +51,32 @@ Why this order:
 - **Read & Match** (read a word with no sound, tap its picture), **Sushi Train (回転寿司)** and **Stepping Stones (川渡り)**.
 - **Word bank** (`js/vocab.js`, audio in `audio/vocab/`): 80 words using only the 46 basic hiragana. Word games only use words made entirely of characters the child knows.
 
+## Mochi's Dressing Room and koban (こばん)
+Children earn **koban** (old Japanese gold coins) by learning, then spend them on anything they like for Mochi. There are no random boxes, nothing to buy with real money, and nothing that expires. Trying things on is always free.
+
+| Earn | Koban |
+|---|---|
+| Every 5 right-first-try answers (adventures and Dojo) | 1 |
+| Finishing an adventure | 3 |
+| A character climbs a stone on its path | 1 |
+| A character reaches ⭐ | 5 |
+| A whole row turns gold | 10 |
+
+A koban counter sits in every game's top bar and gives a small bump and a soft clink when a coin is earned. The stamp screen shows what was earned that day.
+
+**The shop** has 29 items, priced 20–90. A perfect player earns about 10 koban per adventure, so a typical item takes 4–6 adventures of saving.
+- **Colours**, named after Japanese sweets: さくらもち, くさもち, きなこ, あずき, ごま, ゆず.
+- **Hats:** はちまき, a sakura hairpin, a flower crown, a straw hat, a knitted hat, a fox mask, a detective hat, a paper samurai helmet.
+- **Items to hold:** おにぎり, a paper fan, a brush, an umbrella, a paper lantern.
+- **Reactions** (what Mochi does when the child gets it right): big jump, wobble, spin, bow, wink, sparkly eyes.
+- **Celebrations** (what falls from the sky): stars, snow, maple leaves, paper cranes.
+
+**How the shop works**
+- Item names are written in hiragana. Characters the child hasn't met yet are dimmed, and the speaker button reads the name aloud.
+- **Save for this** sets a goal, shown with a progress bar on the home screen.
+- Each child has their own Mochi, which wears its look everywhere: home, games, the players screen and the Karuta opponent.
+- Prices and earning rates are one line each in `js/wardrobe.js`.
+
 ## Calm by design
 - **Speech never overlaps or rushes.** Every clip waits for the one before it, plus a natural pause (about 0.65 s). Meet goes "あたらしい ひらがなだよ!" … あ … あり with longer pauses. Taps on a speaker button answer immediately.
 - **Celebrations:** a soft chime for a right answer. Every 5 in a row, a lantern lights, a few petals fall and Mochi hops. A character climbing a stone gets a small "あ → 🔍 Read it" moment. No buzzers, no lives, no "streak lost".
@@ -119,6 +145,7 @@ js/learn.js       the path model (steps, banked answers, ⭐ days), unlocks, tro
 js/trace.js       tracing engine (KanjiVG stroke templates, checking, demos)
 js/audio.js       Web Audio speech queue (calm pacing) + soft synthesized chimes
 js/update.js      start-up update check, Mochi's update screen, apply only on calm screens
+js/wardrobe.js    koban earning, the shop catalogue and prices, Mochi's colours, hats and held items (SVG layers)
 js/ui.js          helpers, Mochi mascot SVG, trophy/lantern SVGs, petals, grown-up gate
 js/games/core.js  Meet, the writing pad (trace/copy/memory), Listen & Pick, Picture Write, Dictation
 js/games/extra.js Goldfish Scoop, Memory Match, Karuta
@@ -139,4 +166,4 @@ Words live in `js/data.js` (`word`, `emoji`, `meaning`). The matching audio is `
 - Voices: **VOICEVOX:四国めたん** (kana and words), **VOICEVOX:春日部つむぎ** (Mochi's voice). Generated with VOICEVOX Core. Keep these credits visible if you publish the app (they are shown in the grown-ups screen), and check each character's terms of use before any commercial release.
 - Stroke order data: **KanjiVG** © Ulrich Apel, CC BY-SA 3.0 (https://kanjivg.tagaini.net).
 - Fonts: **Klee One** (Fontworks) and **M PLUS Rounded 1c**, both SIL Open Font License.
-- Mochi the mascot, trophies, lanterns and all other art are original SVG drawn in code. Picture words use the device's emoji font as placeholders.
+- Mochi the mascot, the wardrobe, trophies, lanterns and all other art are original SVG drawn in code. Picture words use the device's emoji font as placeholders.

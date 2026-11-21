@@ -1,4 +1,5 @@
-import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake, speakerIcon } from './ui.js';
+import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake, speakerIcon, setLook, kobanPill, kobanSVG, overlay } from './ui.js';
+import * as W from './wardrobe.js';
 import * as A from './audio.js';
 import * as S from './store.js';
 import { KANA } from './data.js';
@@ -51,12 +52,13 @@ document.addEventListener('pointerdown', () => A.unlockAudio(), { once: true, ca
 // ================= Profiles =================
 function showProfiles() {
   profile = null;
+  setLook(null);
   const list = el('div', { class: 'profile-list' });
   for (const p of S.profiles()) {
     const t = el('button', { class: 'profile-tile', style: { '--c': p.color } },
-      el('span', { class: 'avatar' }, p.avatar), el('span', { class: 'pname' }, p.name),
+      el('span', { class: 'avatar' }, p.avatar, mochi('happy', 'xs', W.lookOf(p))), el('span', { class: 'pname' }, p.name),
       el('span', { class: 'pmeta' }, `${introduced(p).length} hiragana`));
-    t.addEventListener('click', () => { A.unlockAudio(); profile = p; S.setLastProfile(p.id); showHome(true); });
+    t.addEventListener('click', () => { A.unlockAudio(); profile = p; setLook(W.lookOf(p)); S.setLastProfile(p.id); showHome(true); });
     list.append(t);
   }
   const add = el('button', { class: 'profile-tile add' }, el('span', { class: 'avatar' }, '＋'), el('span', { class: 'pname' }, 'New player'));
@@ -91,6 +93,7 @@ function showNewProfile() {
   create.onclick = () => {
     if (!name.value.trim()) { name.focus(); name.classList.add('need'); return; }
     profile = S.createProfile(name.value, avatar, color);
+    setLook(W.lookOf(profile));
     S.setLastProfile(profile.id);
     A.unlockAudio();
     showHome(true);
@@ -145,10 +148,22 @@ function showHome(greet = false) {
         el('div', { class: 'home-tiles' },
           tile('Dojo', '🥋', showDojo, n < 1 && !S.settings().openAll),
           tile('My Hiragana', 'あ', showChart),
+          tile('Dressing Room', '👘', () => showDressingRoom()),
           tile('Trophies', '🏆', showTrophies),
           tile('Stamps', '🔴', showStamps)))),
     rowStrip(p),
   );
+  app.querySelector('.topline').append(kobanPill(W.balance(p), 'home'));
+  const wish = p.wish && W.item(p.wish);
+  if (wish && !W.owns(p, wish.id)) {
+    const have = Math.min(W.balance(p), wish.price);
+    const goal = el('button', { class: 'wish-goal' },
+      el('span', {}, 'Saving for '), el('b', { class: 'kana' }, wish.name),
+      el('span', { class: 'wish-bar' }, el('i', { style: { transform: `scaleX(${have / wish.price})` } })),
+      el('span', {}, `${have} / ${wish.price}`));
+    goal.onclick = () => showDressingRoom(wish.cat, wish.id);
+    app.querySelector('.home-mochi').append(goal);
+  }
   app.querySelector('.home-tile:nth-child(2) .emoji').classList.add('kana-tile');
   if (greet) A.say('konnichiwa', { lead: 300 });
   m.hop();
@@ -262,7 +277,8 @@ async function stampEnd(s) {
   const m = mochi('sleepy', 'md');
   const done = el('button', { class: 'btn big' }, 'Done');
   screen('stamp-end',
-    el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, `Great work today! You got ${s.correctCount} right.`)),
+    el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, `Great work today! You got ${s.correctCount} right`,
+      s.coinsEarned ? el('span', { class: 'earned' }, ' and earned ', kobanPill(s.coinsEarned)) : '', '.')),
     card,
     el('div', { class: 'center' }, done));
   await wait(700);
@@ -535,6 +551,136 @@ async function runDojoKaruta(players, sel) {
   showDojo();
 }
 
+// ================= Mochi's Dressing Room =================
+// Earn koban by learning, spend them on anything. Trying on is always free.
+const DEFAULTS = {
+  color: { name: 'しろ', en: 'classic' }, hat: { name: 'なし', en: 'no hat' }, item: { name: 'なし', en: 'nothing' },
+  reaction: { name: 'ぴょこ', en: 'hop' }, celebration: { name: 'さくら', en: 'sakura petals' },
+};
+// Hiragana name with characters the child hasn't met yet shown dimmed.
+function kanaName(p, name) {
+  return el('span', { class: `kana iname ${name.length > 6 ? 'long' : ''}` }, ...[...name].map((c) =>
+    (c === ' ' ? ' ' : el('span', { class: isIntroduced(p, c) ? '' : 'dim' }, c))));
+}
+
+function showDressingRoom(startCat = 'color', startId) {
+  const p = profile;
+  let cat = startCat;
+  let selected = startId || W.lookOf(p)[cat] || null;
+  const stageMochi = mochi('happy', 'xl', W.lookOf(p));
+  const nameRow = el('div', { class: 'dr-name' });
+  const actions = el('div', { class: 'dr-actions' });
+  const tabs = el('div', { class: 'dr-tabs' });
+  const grid = el('div', { class: 'dr-grid' });
+  const purse = kobanPill(W.balance(p), 'big');
+
+  const preview = () => ({ ...W.lookOf(p), [cat]: selected });
+  const sayName = (id) => (id ? A.play(`audio/wardrobe/${id}.mp3`, { interrupt: true }) : null);
+
+  function renderStage() {
+    stageMochi.setLook(preview());
+    const it = selected ? W.item(selected) : null;
+    const d = it || DEFAULTS[cat];
+    const sp = el('button', { class: 'speaker', 'aria-label': 'Say the name', html: speakerIcon() });
+    onTap(sp, () => sayName(selected));
+    nameRow.replaceChildren(kanaName(p, d.name), it ? sp : '', el('span', { class: 'iname-en' }, d.en));
+    const worn = W.lookOf(p)[cat] === selected;
+    const ownedIt = !it || W.owns(p, it.id);
+    actions.replaceChildren();
+    if (ownedIt) {
+      if (worn) {
+        actions.append(el('span', { class: 'dr-wearing' }, '✓ Mochi is wearing this'));
+      } else {
+        const wearBtn = el('button', { class: 'btn big' }, it ? 'Wear it' : 'Choose this');
+        wearBtn.onclick = () => {
+          if (it) W.wear(p, it.id); else W.takeOff(p, cat);
+          setLook(W.lookOf(p));
+          stageMochi.react(); A.say('niau', { interrupt: true });
+          render();
+        };
+        actions.append(wearBtn);
+      }
+    } else if (W.balance(p) >= it.price) {
+      const buyBtn = el('button', { class: 'btn big buy' }, 'Buy for ', kobanPill(it.price));
+      buyBtn.onclick = () => confirmBuy(it);
+      actions.append(buyBtn);
+    } else {
+      const need = it.price - W.balance(p);
+      actions.append(el('div', { class: 'dr-need' },
+        el('span', { class: 'wish-bar wide' }, el('i', { style: { transform: `scaleX(${W.balance(p) / it.price})` } })),
+        el('span', {}, `${W.balance(p)} / ${it.price} koban · ${need} more to go`)));
+      const wishBtn = el('button', { class: 'btn soft' }, p.wish === it.id ? '⭐ Saving for this' : '⭐ Save for this');
+      wishBtn.onclick = () => { p.wish = p.wish === it.id ? null : it.id; S.save(); renderStage(); };
+      actions.append(wishBtn);
+    }
+  }
+
+  function confirmBuy(it) {
+    const box = el('div', { class: 'modal-back' }, el('div', { class: 'modal' },
+      mochi('happy', 'md', { ...W.lookOf(p), [it.cat]: it.id }),
+      el('p', { class: 'modal-text' }, 'Buy ', kanaName(p, it.name), ' for ', kobanPill(it.price), '?'),
+      el('p', { class: 'small' }, `You'll have ${W.balance(p) - it.price} koban left.`),
+      el('div', { class: 'row-btns' },
+        el('button', { class: 'btn soft', onclick: () => box.remove() }, 'Not now'),
+        el('button', { class: 'btn', onclick: () => {
+          box.remove();
+          if (!W.buy(p, it.id)) return;
+          setLook(W.lookOf(p));
+          A.clink(); A.chime(1); petals(16, it.cat === 'celebration' ? it.id : null);
+          stageMochi.react(); A.say('kawaii', { interrupt: true });
+          render();
+        } }, 'Buy!'))));
+    overlay().append(box);
+  }
+
+  function card(id) {
+    const it = id ? W.item(id) : null;
+    const d = it || DEFAULTS[cat];
+    const look = { ...W.lookOf(p), [cat]: id };
+    let pic;
+    if (cat === 'celebration') {
+      pic = el('div', { class: 'dr-cele' }, ...Array.from({ length: 5 }, (_, i) =>
+        el('span', { class: `petal ${id || 'e-sakura'} still`, style: { left: `${12 + i * 17}%`, top: `${[20, 55, 10, 45, 25][i]}%`, '--c': ['#f6b7c4', '#9cc8e8', '#ffe08a', '#b9dca0', '#f6b7c4'][i] } })));
+    } else {
+      pic = mochi(cat === 'reaction' && (id === 'r-wink' || id === 'r-sparkle') ? (id === 'r-wink' ? 'wink' : 'stars') : 'idle', 'card', look);
+    }
+    const worn = W.lookOf(p)[cat] === id;
+    const status = !it ? (worn ? el('span', { class: 'tag on' }, '✓ Wearing') : el('span', { class: 'tag' }, 'Free'))
+      : W.owns(p, id) ? el('span', { class: `tag ${worn ? 'on' : 'own'}` }, worn ? '✓ Wearing' : 'Yours')
+        : el('span', { class: 'tag price' }, kobanPill(it.price), p.wish === id ? ' ⭐' : '');
+    const b = el('button', { class: `dr-card ${selected === id ? 'sel' : ''} ${it && !W.owns(p, id) ? 'shop' : ''}`, 'data-id': id || '' },
+      pic, kanaName(p, d.name), status);
+    onTap(b, () => {
+      selected = id;
+      grid.querySelectorAll('.dr-card').forEach((x) => x.classList.toggle('sel', x === b));
+      renderStage();
+      if (cat === 'reaction') stageMochi.react(id || 'r-hop');
+      else if (cat === 'celebration') petals(12, id || 'e-sakura');
+      sayName(id);
+    });
+    return b;
+  }
+
+  function render() {
+    purse.querySelector('b').textContent = W.balance(p);
+    tabs.replaceChildren(...W.CATS.map((c) => {
+      const t = el('button', { class: `dr-tab ${c.id === cat ? 'on' : ''}` }, el('span', { class: 'emoji' }, c.icon), c.name);
+      t.onclick = () => { cat = c.id; selected = W.lookOf(p)[cat] || null; render(); };
+      return t;
+    }));
+    grid.replaceChildren(card(null), ...W.ITEMS.filter((x) => x.cat === cat).map((x) => card(x.id)));
+    renderStage();
+  }
+
+  screen('dressing',
+    el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, 'Mochi’s Dressing Room'), purse),
+    el('div', { class: 'dr-body' },
+      el('div', { class: 'dr-stage' }, el('div', { class: 'dr-rug' }), stageMochi, nameRow, actions),
+      el('div', { class: 'dr-shop' }, tabs, grid,
+        el('p', { class: 'small dr-how' }, 'Earn koban: 1 for every 5 right answers · 3 for each adventure · 1 for each path step · 5 for each ⭐ · 10 for a gold row'))));
+  render();
+}
+
 // ================= Trophy room =================
 function showTrophies() {
   const p = profile;
@@ -591,7 +737,7 @@ function showParent() {
       }));
     const locked = ROW_CHARS.findIndex((r, i) => !rowUnlocked(p, i));
     return el('details', { class: 'pp' },
-      el('summary', {}, el('span', { class: 'avatar' }, p.avatar), `${p.name} — ${introduced(p).length} hiragana, ${p.stamps.length} adventures, best streak ${p.bestStreak || 0}`),
+      el('summary', {}, el('span', { class: 'avatar' }, p.avatar), `${p.name} — ${introduced(p).length} hiragana, ${p.stamps.length} adventures, best streak ${p.bestStreak || 0}, ${W.balance(p)} koban, ${(p.owned || []).length} of ${W.ITEMS.length} wardrobe items`),
       locked > 0 ? el('p', { class: 'small' }, `Next row (${ROW_CHARS[locked].label}) opens when every ${ROW_CHARS[locked - 1].label}-row character has passed 👂 Hear it.`) : null,
       table,
       el('div', { class: 'row-btns' },
@@ -636,7 +782,7 @@ async function boot() {
   await U.initUpdates();
   await U.startupCheck(); // a new version restarts the page here
   const last = S.getState().lastProfileId && S.getProfile(S.getState().lastProfileId);
-  if (last) { profile = last; showHome(); } else showProfiles();
+  if (last) { profile = last; setLook(W.lookOf(last)); showHome(); } else showProfiles();
   U.welcomeNewVersion();
 }
 boot();
