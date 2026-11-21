@@ -163,7 +163,7 @@ Words live in `js/data.js` (`word`, `emoji`, `meaning`). The matching audio is `
 
 ## Credits & licences
 
-- Voices: **VOICEVOX:四国めたん** (kana and words), **VOICEVOX:春日部つむぎ** (Mochi's voice). Generated with VOICEVOX Core. Keep these credits visible if you publish the app (they are shown in the grown-ups screen), and check each character's terms of use before any commercial release.
+- Voices: **VOICEVOX:春日部つむぎ** (single hiragana and Mochi's voice), **VOICEVOX:四国めたん** (words). Generated with VOICEVOX Core. Keep these credits visible if you publish the app (they are shown in the grown-ups screen), and check each character's terms of use before any commercial release.
 - Stroke order data: **KanjiVG** © Ulrich Apel, CC BY-SA 3.0 (https://kanjivg.tagaini.net).
 - Fonts: **Klee One** (Fontworks) and **M PLUS Rounded 1c**, both SIL Open Font License.
 - Mochi the mascot, the wardrobe, trophies, lanterns and all other art are original SVG drawn in code. Picture words use the device's emoji font as placeholders.

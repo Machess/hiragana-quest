@@ -4,7 +4,8 @@ These aren't part of the app (the service worker skips this folder). The scripts
 build machine (`/home/claude/...`), so adjust those before running.
 
 - `make_content.py` → `content.json`: hiragana list, picture words, rows and Mochi's lines
-- `gen_audio.py`: hiragana, picture-word and Mochi audio via VOICEVOX Core 0.16 (`kana-only` regenerates just the hiragana)
+- `gen_kana_voice.py`: the 46 single-hiragana sounds (春日部つむぎ, natural length, clean volume; needs voice_compare.py for the engine setup)
+- `gen_audio.py`: picture-word and Mochi audio via VOICEVOX Core 0.16
 - `vocab.py` → `js/vocab.js` + `vocab.json`; `gen_vocab_audio.py` makes `audio/vocab/*`
 - `gen_wardrobe_audio.py`: Mochi saying each wardrobe item name (audio/wardrobe/*)
 - `normalize.py`, then `even_out.py`: level all speech clips (run after generating any audio)
