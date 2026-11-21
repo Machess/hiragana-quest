@@ -12,6 +12,7 @@ import { meet, trace, listen, picwrite, dictation, writeOne } from './games/core
 import { goldfish, memory, karuta } from './games/extra.js';
 import { detective, spot, sushi, river, readmatch } from './games/more.js';
 import { animatedKanaSVG } from './trace.js';
+import * as U from './update.js';
 
 const app = document.getElementById('app');
 const AVATARS = ['🦊', '🐼', '🐸', '🐱', '🐰', '🐻', '🐧', '🐯', '🐨', '🦉', '🐙', '🦄'];
@@ -23,6 +24,7 @@ function screen(cls, ...children) {
   const n = el('div', { class: `screen ${cls}` }, ...children);
   app.replaceChildren(n);
   keepAwake(false);
+  U.safeScreen(cls === 'home' || cls === 'profiles');
   return n;
 }
 
@@ -604,6 +606,7 @@ function showParent() {
       toggle('openAll', 'Open all hiragana in the Dojo (for kids who already know some)'),
       toggle('reducedMotion', 'Calmer animations')),
     el('section', { class: 'card-sec' }, el('h3', {}, 'Players'), plist),
+    versionSection(),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'How it works'),
       el('p', {}, 'Every hiragana walks its own path: 👀 Meet → ✍️ Trace → 🖍️ Copy → 👂 Hear it → 🔍 Read it → ✏️ Write it → 🍣 Use it → ⭐ Master. Tracing is kept short; copying freehand with a model comes next because forming letters by hand is what builds letter recognition. Recognising by sound and by sight comes before writing from memory (recall is harder than recognition). ⭐ needs correct answers on 3 separate days, because spaced practice is what makes it stick. Adventures (8–10 min) give each character the practice its step needs; the Dojo lets children practise any hiragana they choose.')),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'Credits'),
@@ -611,10 +614,29 @@ function showParent() {
   );
 }
 
-// ================= Boot =================
-const last = S.getState().lastProfileId && S.getProfile(S.getState().lastProfileId);
-if (last) { profile = last; showHome(); } else showProfiles();
-
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+function versionSection() {
+  const info = el('p', {}, 'Version: …');
+  const status = el('span', { class: 'small' });
+  const btn = el('button', { class: 'btn soft' }, 'Check for updates');
+  btn.onclick = async () => {
+    status.textContent = 'Checking…';
+    const r = await U.checkNow();
+    status.textContent = { latest: 'You have the newest version.', offline: 'No internet right now.', failed: 'The download didn’t finish. It will try again next time.', unsupported: 'Updates aren’t available here.', updating: 'Updating…' }[r] || '';
+  };
+  U.currentVersion().then((v) => {
+    info.textContent = v ? `Version ${v.version} · built ${v.built}${v.notes ? ` · ${v.notes}` : ''}` : 'Version: development copy';
+  });
+  return el('section', { class: 'card-sec small' }, el('h3', {}, 'App version'), info,
+    el('p', {}, 'The app checks for a new version every time it starts, and again when you come back to it. New versions install only on the players or home screen, never in the middle of a game.'),
+    el('div', { class: 'row-btns' }, btn, status));
 }
+
+// ================= Boot =================
+async function boot() {
+  await U.initUpdates();
+  await U.startupCheck(); // a new version restarts the page here
+  const last = S.getState().lastProfileId && S.getProfile(S.getState().lastProfileId);
+  if (last) { profile = last; showHome(); } else showProfiles();
+  U.welcomeNewVersion();
+}
+boot();

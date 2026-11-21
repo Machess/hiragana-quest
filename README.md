@@ -62,6 +62,22 @@ Why this order:
 - **Smooth on mid-range tablet GPUs:** only `transform` and `opacity` are animated. There's no blur, no filter and no animated shadows. Memory cards flip in 2D instead of 3D. Tested at 60 fps with the CPU slowed 4×.
 - **Touch:** very large touch contacts (a resting palm) are ignored while tracing, and a stylus works too. Long-press menus and text selection are off. The screen stays awake during play.
 
+## Updates (GitHub Pages)
+
+The installed app keeps itself up to date from GitHub Pages:
+- **Every start:** it asks Pages for the newest version. If there is one, Mochi shows "Getting new things…" with the release note while only the **changed** files download. Then the app restarts into the new version before the child begins, and shows "✨ New: …" once. Already up to date: the check takes a fraction of a second. No internet: it starts with the version it has.
+- **Already open** (Android keeps installed apps in memory): it checks again when the app comes back to the front, if the last check was over 30 minutes ago. A new version installs only on the players or home screen, **never in the middle of a game**.
+- **Safe:** every file has a fingerprint, and downloads skip all caches, so a stale copy can't sneak in. An update is all or nothing: if any file fails, it's dropped and the current version keeps running. Progress (stored on the device) is never touched.
+- **Grown-ups screen:** shows the version, build date and release note, plus a **Check for updates** button.
+- GitHub Pages can serve files up to ~10 minutes old after a push, so a new version reaches the tablet within about 10 minutes.
+
+**Releasing a new version**
+1. Write a one-line note in `tools/release-notes.txt` (shown to the child as "New: …").
+2. Run `python3 tools/build.py`. It writes `sw.js` (file list + fingerprints) and `version.json`. Run it after **every** change, otherwise devices won't see the update.
+3. Commit and push to `main`. Pages publishes it, and tablets pick it up on their next start.
+
+Everything pushed to `main` reaches the tablets. If you'd rather test first, publish Pages from a separate `release` branch and merge into it when ready.
+
 ## Run it locally
 
 Service workers and ES modules need a web server (opening `index.html` as a file won't work):
@@ -94,13 +110,15 @@ Capacitor serves the files from `https://localhost`, so modules and audio work a
 ## Project layout
 
 ```
-index.html, manifest.webmanifest, sw.js   PWA shell + offline cache (sw.js lists every file)
+index.html, manifest.webmanifest, sw.js   PWA shell + offline cache + updates (sw.js is generated)
+version.json                              current version, build date, release note (generated)
 css/style.css                             all styling (washi paper / indigo / vermilion theme)
 js/main.js        screens: profiles, home, adventure runner, chart, character card, Dojo, trophies, stamps, parent area
 js/session.js     game shell, streaks, step-up moments, adventure planner (by path step)
 js/learn.js       the path model (steps, banked answers, ⭐ days), unlocks, trophies, look-alike distractors
 js/trace.js       tracing engine (KanjiVG stroke templates, checking, demos)
 js/audio.js       Web Audio speech queue (calm pacing) + soft synthesized chimes
+js/update.js      start-up update check, Mochi's update screen, apply only on calm screens
 js/ui.js          helpers, Mochi mascot SVG, trophy/lantern SVGs, petals, grown-up gate
 js/games/core.js  Meet, the writing pad (trace/copy/memory), Listen & Pick, Picture Write, Dictation
 js/games/extra.js Goldfish Scoop, Memory Match, Karuta
@@ -111,7 +129,6 @@ audio/kana|words|voice/   pre-generated Japanese speech (mp3)
 fonts/            Klee One (textbook-style kana), M PLUS Rounded 1c (UI) — subsetted woff2
 ```
 
-If you change files, update the precache list and version in `sw.js` (every file must be listed). Otherwise installed copies keep serving the old cached version.
 
 ## Changing picture words
 

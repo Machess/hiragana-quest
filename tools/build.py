@@ -1,6 +1,6 @@
 # Renders icons and writes sw.js with the precache list + content hash version.
 import hashlib, os, json, sys, asyncio
-ROOT='/home/claude/hiragana-quest'
+ROOT=os.environ.get('HQ_ROOT', '/home/claude/hiragana-quest')
 def icons():
     from playwright.sync_api import sync_playwright
     import subprocess
@@ -26,18 +26,36 @@ def icons():
             pg.screenshot(path=f'{ROOT}/icons/{name}.png')
         b.close()
 def sw():
-    files=[]
-    for d,_,fs in os.walk(ROOT):
+    import datetime
+    skip_dirs = ('tools', '.')
+    skip = {'sw.js', 'README.md', 'version.json', '.gitignore'}
+    files = []
+    for d, dirs, fs in os.walk(ROOT):
+        dirs[:] = [x for x in dirs if not x.startswith('.') and x != 'tools']
         for f in fs:
-            rel=os.path.relpath(os.path.join(d,f),ROOT)
-            if rel.startswith(('tools','.')) or rel in ('sw.js','README.md') or rel.endswith('.zip'): continue
+            rel = os.path.relpath(os.path.join(d, f), ROOT)
+            if rel.startswith(skip_dirs) or rel in skip or rel.endswith(('.zip', '.tmp.mp3')): continue
             files.append(rel)
     files.sort()
-    h=hashlib.sha1()
-    for f in files: h.update(open(os.path.join(ROOT,f),'rb').read())
-    ver=h.hexdigest()[:10]
-    tpl=open('/home/claude/tools/sw.template.js').read()
-    open(f'{ROOT}/sw.js','w').write(tpl.replace('__VERSION__',ver).replace('__FILES__',json.dumps(['./']+files,indent=1)))
-    print('sw version',ver,len(files),'files')
+    fp = lambda rel: hashlib.sha1(open(os.path.join(ROOT, rel), 'rb').read()).hexdigest()[:12]
+    hashes = {f: fp(f) for f in files}
+    tpl = open(os.path.join(os.path.dirname(__file__), 'sw.template.js')).read()
+    # The version covers every app file AND the service worker code itself.
+    ver = hashlib.sha1((json.dumps(hashes, sort_keys=True) + tpl).encode()).hexdigest()[:10]
+    # version.json: what the grown-ups screen shows, and the notes for this release
+    notes_file = os.path.join(os.path.dirname(__file__), 'release-notes.txt')
+    notes = open(notes_file).read().strip() if os.path.exists(notes_file) else ''
+    old = {}
+    vpath = os.path.join(ROOT, 'version.json')
+    if os.path.exists(vpath):
+        try: old = json.load(open(vpath))
+        except Exception: old = {}
+    built = old.get('built') if old.get('version') == ver else datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+    json.dump({'version': ver, 'built': built, 'notes': notes}, open(vpath, 'w'), ensure_ascii=False, indent=1)
+    hashes['version.json'] = fp('version.json')
+    hashes['./'] = hashes['index.html']
+    out = tpl.replace('__VERSION__', ver).replace('__FILES__', json.dumps(hashes, indent=1, sort_keys=True))
+    open(f'{ROOT}/sw.js', 'w').write(out)
+    print('sw version', ver, len(hashes), 'files')
 if 'icons' in sys.argv: icons()
 sw()

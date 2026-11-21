@@ -1,6 +1,7 @@
 // A play session: top bar (progress stones + streak lanterns), streak celebrations,
 // and the adventure planner that strings games together.
 import { el, mochi, petals, icon, wait, toast, overlay, keepAwake } from './ui.js';
+import { safeScreen } from './update.js';
 import * as A from './audio.js';
 import { introduced, newCharsForSession, updateTrophies, playableWords, onStepUp, stepOf, S, STEPS, MASTERED } from './learn.js';
 import { save } from './store.js';
@@ -33,6 +34,7 @@ export class Session {
     root.replaceChildren(this.node);
     this.renderStones();
     keepAwake(true);
+    safeScreen(false); // never update in the middle of a game
   }
 
   renderStones() {

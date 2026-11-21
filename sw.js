@@ -1,232 +1,318 @@
-// Offline support: everything is precached on install, served cache-first.
-const VERSION = 'hq-dbed5d8173';
-const FILES = [
- "./",
- "audio/kana/a.mp3",
- "audio/kana/chi.mp3",
- "audio/kana/e.mp3",
- "audio/kana/fu.mp3",
- "audio/kana/ha.mp3",
- "audio/kana/he.mp3",
- "audio/kana/hi.mp3",
- "audio/kana/ho.mp3",
- "audio/kana/i.mp3",
- "audio/kana/ka.mp3",
- "audio/kana/ke.mp3",
- "audio/kana/ki.mp3",
- "audio/kana/ko.mp3",
- "audio/kana/ku.mp3",
- "audio/kana/ma.mp3",
- "audio/kana/me.mp3",
- "audio/kana/mi.mp3",
- "audio/kana/mo.mp3",
- "audio/kana/mu.mp3",
- "audio/kana/n.mp3",
- "audio/kana/na.mp3",
- "audio/kana/ne.mp3",
- "audio/kana/ni.mp3",
- "audio/kana/no.mp3",
- "audio/kana/nu.mp3",
- "audio/kana/o.mp3",
- "audio/kana/ra.mp3",
- "audio/kana/re.mp3",
- "audio/kana/ri.mp3",
- "audio/kana/ro.mp3",
- "audio/kana/ru.mp3",
- "audio/kana/sa.mp3",
- "audio/kana/se.mp3",
- "audio/kana/shi.mp3",
- "audio/kana/so.mp3",
- "audio/kana/su.mp3",
- "audio/kana/ta.mp3",
- "audio/kana/te.mp3",
- "audio/kana/to.mp3",
- "audio/kana/tsu.mp3",
- "audio/kana/u.mp3",
- "audio/kana/wa.mp3",
- "audio/kana/wo.mp3",
- "audio/kana/ya.mp3",
- "audio/kana/yo.mp3",
- "audio/kana/yu.mp3",
- "audio/vocab/a_i.mp3",
- "audio/vocab/a_ka.mp3",
- "audio/vocab/a_ki.mp3",
- "audio/vocab/a_me.mp3",
- "audio/vocab/a_o.mp3",
- "audio/vocab/a_sa.mp3",
- "audio/vocab/a_shi.mp3",
- "audio/vocab/e_ki.mp3",
- "audio/vocab/fu_ku.mp3",
- "audio/vocab/fu_ne.mp3",
- "audio/vocab/fu_to_n.mp3",
- "audio/vocab/fu_yu.mp3",
- "audio/vocab/ha_ko.mp3",
- "audio/vocab/ha_na.mp3",
- "audio/vocab/ha_shi.mp3",
- "audio/vocab/hi_ko_u_ki.mp3",
- "audio/vocab/hi_me.mp3",
- "audio/vocab/hi_to.mp3",
- "audio/vocab/ho_n.mp3",
- "audio/vocab/ho_ne.mp3",
- "audio/vocab/ho_shi.mp3",
- "audio/vocab/i_e.mp3",
- "audio/vocab/i_ka.mp3",
- "audio/vocab/i_nu.mp3",
- "audio/vocab/i_ru_ka.mp3",
- "audio/vocab/i_su.mp3",
- "audio/vocab/i_to.mp3",
- "audio/vocab/ka_e_ru.mp3",
- "audio/vocab/ka_i.mp3",
- "audio/vocab/ka_me.mp3",
- "audio/vocab/ka_ni.mp3",
- "audio/vocab/ka_o.mp3",
- "audio/vocab/ka_sa.mp3",
- "audio/vocab/ka_wa.mp3",
- "audio/vocab/ki_ku.mp3",
- "audio/vocab/ki_no_ko.mp3",
- "audio/vocab/ki_tsu_ne.mp3",
- "audio/vocab/ko_e.mp3",
- "audio/vocab/ku_chi.mp3",
- "audio/vocab/ku_ma.mp3",
- "audio/vocab/ku_ru_ma.mp3",
- "audio/vocab/ku_su_ri.mp3",
- "audio/vocab/ku_tsu.mp3",
- "audio/vocab/mi_ka_n.mp3",
- "audio/vocab/mi_mi.mp3",
- "audio/vocab/mo_mo.mp3",
- "audio/vocab/mu_shi.mp3",
- "audio/vocab/na_su.mp3",
- "audio/vocab/na_tsu.mp3",
- "audio/vocab/ne_ko.mp3",
- "audio/vocab/ni_ku.mp3",
- "audio/vocab/ni_wa_to_ri.mp3",
- "audio/vocab/o_ka_shi.mp3",
- "audio/vocab/o_ni.mp3",
- "audio/vocab/re_mo_n.mp3",
- "audio/vocab/ri_su.mp3",
- "audio/vocab/sa_ka_na.mp3",
- "audio/vocab/sa_ku_ra.mp3",
- "audio/vocab/sa_ru.mp3",
- "audio/vocab/shi_ka.mp3",
- "audio/vocab/shi_ta.mp3",
- "audio/vocab/so_ra.mp3",
- "audio/vocab/su_i_ka.mp3",
- "audio/vocab/su_shi.mp3",
- "audio/vocab/ta_i_ko.mp3",
- "audio/vocab/ta_ko.mp3",
- "audio/vocab/ta_nu_ki.mp3",
- "audio/vocab/te_n_ki.mp3",
- "audio/vocab/to_ke_i.mp3",
- "audio/vocab/to_ra.mp3",
- "audio/vocab/to_ri.mp3",
- "audio/vocab/u_e.mp3",
- "audio/vocab/u_ma.mp3",
- "audio/vocab/u_shi.mp3",
- "audio/vocab/wa_ni.mp3",
- "audio/vocab/ya_ma.mp3",
- "audio/vocab/ya_sa_i.mp3",
- "audio/vocab/yo_ru.mp3",
- "audio/vocab/yu_ki.mp3",
- "audio/vocab/yu_me.mp3",
- "audio/voice/arigatou.mp3",
- "audio/voice/atarashii.mp3",
- "audio/voice/chigau.mp3",
- "audio/voice/dorekana.mp3",
- "audio/voice/dorenooto.mp3",
- "audio/voice/ganbatta.mp3",
- "audio/voice/iine.mp3",
- "audio/voice/jouzu.mp3",
- "audio/voice/kaitemiyou.mp3",
- "audio/voice/konnichiwa.mp3",
- "audio/voice/mitsuketa.mp3",
- "audio/voice/mouikkai.mp3",
- "audio/voice/oishii.mp3",
- "audio/voice/oyasumi.mp3",
- "audio/voice/pittari.mp3",
- "audio/voice/streak10.mp3",
- "audio/voice/streak5.mp3",
- "audio/voice/sugoi.mp3",
- "audio/voice/totta.mp3",
- "audio/voice/trophy.mp3",
- "audio/voice/tsuita.mp3",
- "audio/voice/yattane.mp3",
- "audio/voice/yokudekimashita.mp3",
- "audio/words/a.mp3",
- "audio/words/chi.mp3",
- "audio/words/e.mp3",
- "audio/words/fu.mp3",
- "audio/words/ha.mp3",
- "audio/words/he.mp3",
- "audio/words/hi.mp3",
- "audio/words/ho.mp3",
- "audio/words/i.mp3",
- "audio/words/ka.mp3",
- "audio/words/ke.mp3",
- "audio/words/ki.mp3",
- "audio/words/ko.mp3",
- "audio/words/ku.mp3",
- "audio/words/ma.mp3",
- "audio/words/me.mp3",
- "audio/words/mi.mp3",
- "audio/words/mo.mp3",
- "audio/words/mu.mp3",
- "audio/words/n.mp3",
- "audio/words/na.mp3",
- "audio/words/ne.mp3",
- "audio/words/ni.mp3",
- "audio/words/no.mp3",
- "audio/words/nu.mp3",
- "audio/words/o.mp3",
- "audio/words/ra.mp3",
- "audio/words/re.mp3",
- "audio/words/ri.mp3",
- "audio/words/ro.mp3",
- "audio/words/ru.mp3",
- "audio/words/sa.mp3",
- "audio/words/se.mp3",
- "audio/words/shi.mp3",
- "audio/words/so.mp3",
- "audio/words/su.mp3",
- "audio/words/ta.mp3",
- "audio/words/te.mp3",
- "audio/words/to.mp3",
- "audio/words/tsu.mp3",
- "audio/words/u.mp3",
- "audio/words/wa.mp3",
- "audio/words/wo.mp3",
- "audio/words/ya.mp3",
- "audio/words/yo.mp3",
- "audio/words/yu.mp3",
- "css/style.css",
- "fonts/klee.woff2",
- "fonts/mplus-rounded-bold.woff2",
- "fonts/mplus-rounded-medium.woff2",
- "icons/icon-192.png",
- "icons/icon-512.png",
- "icons/icon-maskable-512.png",
- "index.html",
- "js/audio.js",
- "js/data.js",
- "js/games/core.js",
- "js/games/extra.js",
- "js/games/more.js",
- "js/learn.js",
- "js/main.js",
- "js/session.js",
- "js/store.js",
- "js/trace.js",
- "js/ui.js",
- "js/vocab.js",
- "manifest.webmanifest"
-];
+// Hiragana Quest service worker (generated by tools/build.py — don't edit by hand).
+// - Every file is stored on the device, so the game works offline.
+// - Each build lists a fingerprint per file. An update downloads only the files that changed
+//   and copies the rest from the previous version.
+// - Downloads add ?v=<fingerprint> and skip the browser cache, so GitHub Pages' caching can't
+//   hand out an old copy of a changed file.
+// - All or nothing: if any file fails, the update is dropped and the current version stays.
+// - A new version waits until the app says it's a calm moment (message 'apply').
+const VERSION = 'hq-2b61797b5f';
+const FILES = {
+ "./": "1fbbe6265939",
+ "audio/kana/a.mp3": "b967444c9707",
+ "audio/kana/chi.mp3": "e3278a3b5898",
+ "audio/kana/e.mp3": "61158a3ee99a",
+ "audio/kana/fu.mp3": "df5c81733240",
+ "audio/kana/ha.mp3": "1b5c88cdf94f",
+ "audio/kana/he.mp3": "8d02082a5fe9",
+ "audio/kana/hi.mp3": "5730d91c249f",
+ "audio/kana/ho.mp3": "54ec6c909904",
+ "audio/kana/i.mp3": "56ff4190e775",
+ "audio/kana/ka.mp3": "15056a6d13ec",
+ "audio/kana/ke.mp3": "dd386f47773a",
+ "audio/kana/ki.mp3": "26d24c3a2fd5",
+ "audio/kana/ko.mp3": "86e0b1e8a670",
+ "audio/kana/ku.mp3": "f707e0f570c6",
+ "audio/kana/ma.mp3": "705ec239585e",
+ "audio/kana/me.mp3": "713f4589b8d2",
+ "audio/kana/mi.mp3": "4a3a1bffb3c0",
+ "audio/kana/mo.mp3": "d65c6af5a69b",
+ "audio/kana/mu.mp3": "746b92e0443c",
+ "audio/kana/n.mp3": "e94f0bcf72ef",
+ "audio/kana/na.mp3": "5df94585959c",
+ "audio/kana/ne.mp3": "c4ad7610113f",
+ "audio/kana/ni.mp3": "a47f818863e9",
+ "audio/kana/no.mp3": "ef318ae1d97d",
+ "audio/kana/nu.mp3": "d694137c931e",
+ "audio/kana/o.mp3": "d2e671f621ab",
+ "audio/kana/ra.mp3": "ec68ddc5e1ae",
+ "audio/kana/re.mp3": "edb0dcb06a9c",
+ "audio/kana/ri.mp3": "6f0cf9c1b279",
+ "audio/kana/ro.mp3": "fc8a63345ebb",
+ "audio/kana/ru.mp3": "b24660777963",
+ "audio/kana/sa.mp3": "0fc7ca04dd98",
+ "audio/kana/se.mp3": "ef4251196627",
+ "audio/kana/shi.mp3": "4e60ff222d2a",
+ "audio/kana/so.mp3": "9523dd00da8d",
+ "audio/kana/su.mp3": "7d1e0f469451",
+ "audio/kana/ta.mp3": "ffc524f60ade",
+ "audio/kana/te.mp3": "3896a847c2f4",
+ "audio/kana/to.mp3": "4c0ea42c7634",
+ "audio/kana/tsu.mp3": "07a9c8976102",
+ "audio/kana/u.mp3": "129b08afee34",
+ "audio/kana/wa.mp3": "3b1e8b231d15",
+ "audio/kana/wo.mp3": "d2e671f621ab",
+ "audio/kana/ya.mp3": "e4ebda19622d",
+ "audio/kana/yo.mp3": "47be10bb460f",
+ "audio/kana/yu.mp3": "29cf7622d06b",
+ "audio/vocab/a_i.mp3": "204e82c839ac",
+ "audio/vocab/a_ka.mp3": "ac8b1fcf6b5c",
+ "audio/vocab/a_ki.mp3": "5bd8d4cb38bc",
+ "audio/vocab/a_me.mp3": "6d775c00b9b9",
+ "audio/vocab/a_o.mp3": "3e9ca5bf3774",
+ "audio/vocab/a_sa.mp3": "8add84a33fd5",
+ "audio/vocab/a_shi.mp3": "91a1c5d30434",
+ "audio/vocab/e_ki.mp3": "dce6d8918825",
+ "audio/vocab/fu_ku.mp3": "c5abeb76c2ec",
+ "audio/vocab/fu_ne.mp3": "473d591700df",
+ "audio/vocab/fu_to_n.mp3": "053677a62712",
+ "audio/vocab/fu_yu.mp3": "12453205b619",
+ "audio/vocab/ha_ko.mp3": "c21faf5fcd34",
+ "audio/vocab/ha_na.mp3": "19f79f839bec",
+ "audio/vocab/ha_shi.mp3": "24bd83dd7d97",
+ "audio/vocab/hi_ko_u_ki.mp3": "6eb2024ad83d",
+ "audio/vocab/hi_me.mp3": "5604002ed5be",
+ "audio/vocab/hi_to.mp3": "e2be1f5c4cb2",
+ "audio/vocab/ho_n.mp3": "61368545736a",
+ "audio/vocab/ho_ne.mp3": "66b8fa11189a",
+ "audio/vocab/ho_shi.mp3": "980aa0878b3e",
+ "audio/vocab/i_e.mp3": "43be98085422",
+ "audio/vocab/i_ka.mp3": "f236a342c70c",
+ "audio/vocab/i_nu.mp3": "2f5131d28a06",
+ "audio/vocab/i_ru_ka.mp3": "da31b69c79f1",
+ "audio/vocab/i_su.mp3": "00938f0ab028",
+ "audio/vocab/i_to.mp3": "f5575148d12a",
+ "audio/vocab/ka_e_ru.mp3": "b9c280e0ab60",
+ "audio/vocab/ka_i.mp3": "a8b02d1550ca",
+ "audio/vocab/ka_me.mp3": "b8fcc7b70264",
+ "audio/vocab/ka_ni.mp3": "abb6185103fb",
+ "audio/vocab/ka_o.mp3": "3cfa04b1a4d4",
+ "audio/vocab/ka_sa.mp3": "c388d2d8bb54",
+ "audio/vocab/ka_wa.mp3": "e1c5463e9623",
+ "audio/vocab/ki_ku.mp3": "0fa09c90ebdc",
+ "audio/vocab/ki_no_ko.mp3": "d6fc0bab72eb",
+ "audio/vocab/ki_tsu_ne.mp3": "bbe6a9c283ad",
+ "audio/vocab/ko_e.mp3": "4825349eb748",
+ "audio/vocab/ku_chi.mp3": "b96679a95326",
+ "audio/vocab/ku_ma.mp3": "6e63f858ee3b",
+ "audio/vocab/ku_ru_ma.mp3": "e49f01d95f72",
+ "audio/vocab/ku_su_ri.mp3": "7603ad6a31a3",
+ "audio/vocab/ku_tsu.mp3": "07b978c665cd",
+ "audio/vocab/mi_ka_n.mp3": "6124791a51a3",
+ "audio/vocab/mi_mi.mp3": "58cd5bb2d754",
+ "audio/vocab/mo_mo.mp3": "1abf3529dca1",
+ "audio/vocab/mu_shi.mp3": "412e78d459e7",
+ "audio/vocab/na_su.mp3": "04d429d2f04f",
+ "audio/vocab/na_tsu.mp3": "293b883b023d",
+ "audio/vocab/ne_ko.mp3": "4a9bce15d7d4",
+ "audio/vocab/ni_ku.mp3": "3167b4e110a4",
+ "audio/vocab/ni_wa_to_ri.mp3": "bfc209f206bb",
+ "audio/vocab/o_ka_shi.mp3": "d3d93f8e08e9",
+ "audio/vocab/o_ni.mp3": "3358deccfd87",
+ "audio/vocab/re_mo_n.mp3": "42a2204921fc",
+ "audio/vocab/ri_su.mp3": "572773057596",
+ "audio/vocab/sa_ka_na.mp3": "1e1ee4c3a1f3",
+ "audio/vocab/sa_ku_ra.mp3": "7fb43af42cf3",
+ "audio/vocab/sa_ru.mp3": "d19919699f56",
+ "audio/vocab/shi_ka.mp3": "d7c4a813a475",
+ "audio/vocab/shi_ta.mp3": "ed3932a6578d",
+ "audio/vocab/so_ra.mp3": "61ab42c11466",
+ "audio/vocab/su_i_ka.mp3": "1f4af9e02d18",
+ "audio/vocab/su_shi.mp3": "ff8cb94c300c",
+ "audio/vocab/ta_i_ko.mp3": "650ce8af79cf",
+ "audio/vocab/ta_ko.mp3": "b5ec093e8d7c",
+ "audio/vocab/ta_nu_ki.mp3": "21413c5f3773",
+ "audio/vocab/te_n_ki.mp3": "99b7cd4f658b",
+ "audio/vocab/to_ke_i.mp3": "7f3886950d81",
+ "audio/vocab/to_ra.mp3": "036dfe92a7cf",
+ "audio/vocab/to_ri.mp3": "9d77d443a168",
+ "audio/vocab/u_e.mp3": "d7fb93aa4837",
+ "audio/vocab/u_ma.mp3": "3d3e6b2d7def",
+ "audio/vocab/u_shi.mp3": "0cce800a7ac0",
+ "audio/vocab/wa_ni.mp3": "c3bd9bafdb7c",
+ "audio/vocab/ya_ma.mp3": "2cdc72d1a00a",
+ "audio/vocab/ya_sa_i.mp3": "88a6b3518d7d",
+ "audio/vocab/yo_ru.mp3": "2f2b25f323d1",
+ "audio/vocab/yu_ki.mp3": "1e45d705f409",
+ "audio/vocab/yu_me.mp3": "7f90a8db1073",
+ "audio/voice/arigatou.mp3": "54d735db5663",
+ "audio/voice/atarashii.mp3": "507f14ee6752",
+ "audio/voice/chigau.mp3": "410a1fccb544",
+ "audio/voice/dorekana.mp3": "6433ff8401fd",
+ "audio/voice/dorenooto.mp3": "cb33c7b2df9c",
+ "audio/voice/ganbatta.mp3": "93413af40ac8",
+ "audio/voice/iine.mp3": "a2888b6f7354",
+ "audio/voice/jouzu.mp3": "44525ac59be8",
+ "audio/voice/kaitemiyou.mp3": "24f87a5a4dac",
+ "audio/voice/konnichiwa.mp3": "c05a3915ece5",
+ "audio/voice/mitsuketa.mp3": "c0f70388164d",
+ "audio/voice/mouikkai.mp3": "4bf23f446f97",
+ "audio/voice/oishii.mp3": "e0f2afd68f7c",
+ "audio/voice/oyasumi.mp3": "30adb4ca5985",
+ "audio/voice/pittari.mp3": "31267df8b8ac",
+ "audio/voice/streak10.mp3": "2a87225b9667",
+ "audio/voice/streak5.mp3": "b2a9a2f72ca5",
+ "audio/voice/sugoi.mp3": "c7e5208bd3da",
+ "audio/voice/totta.mp3": "10ecfd3e199d",
+ "audio/voice/trophy.mp3": "678712aa20ee",
+ "audio/voice/tsuita.mp3": "8210a2e93bac",
+ "audio/voice/yattane.mp3": "69214b82556f",
+ "audio/voice/yokudekimashita.mp3": "f36b849b6bf0",
+ "audio/words/a.mp3": "89fb913d520a",
+ "audio/words/chi.mp3": "0776796308e1",
+ "audio/words/e.mp3": "e56763c11082",
+ "audio/words/fu.mp3": "473d591700df",
+ "audio/words/ha.mp3": "19f79f839bec",
+ "audio/words/he.mp3": "4984db390b51",
+ "audio/words/hi.mp3": "6eb2024ad83d",
+ "audio/words/ho.mp3": "980aa0878b3e",
+ "audio/words/i.mp3": "2f5131d28a06",
+ "audio/words/ka.mp3": "c388d2d8bb54",
+ "audio/words/ke.mp3": "4c75f962bace",
+ "audio/words/ki.mp3": "bbe6a9c283ad",
+ "audio/words/ko.mp3": "1beff0c2323c",
+ "audio/words/ku.mp3": "6e63f858ee3b",
+ "audio/words/ma.mp3": "8ce383f5551d",
+ "audio/words/me.mp3": "6ec3b7698be9",
+ "audio/words/mi.mp3": "6124791a51a3",
+ "audio/words/mo.mp3": "1abf3529dca1",
+ "audio/words/mu.mp3": "412e78d459e7",
+ "audio/words/n.mp3": "61368545736a",
+ "audio/words/na.mp3": "04d429d2f04f",
+ "audio/words/ne.mp3": "4a9bce15d7d4",
+ "audio/words/ni.mp3": "36a92f1c4ce9",
+ "audio/words/no.mp3": "079d60d9e7ef",
+ "audio/words/nu.mp3": "7408c52d2e4b",
+ "audio/words/o.mp3": "f3ee3eef2803",
+ "audio/words/ra.mp3": "718b4a0f96e0",
+ "audio/words/re.mp3": "42a2204921fc",
+ "audio/words/ri.mp3": "81d5e37639ba",
+ "audio/words/ro.mp3": "7678325895c4",
+ "audio/words/ru.mp3": "a63ac4d90e46",
+ "audio/words/sa.mp3": "1e1ee4c3a1f3",
+ "audio/words/se.mp3": "7a4010c6581f",
+ "audio/words/shi.mp3": "d7c4a813a475",
+ "audio/words/so.mp3": "38080ebb4bbd",
+ "audio/words/su.mp3": "82309433219f",
+ "audio/words/ta.mp3": "11c4ff96434f",
+ "audio/words/te.mp3": "1ba8c4fa51fb",
+ "audio/words/to.mp3": "9d77d443a168",
+ "audio/words/tsu.mp3": "7f2aa07b50a7",
+ "audio/words/u.mp3": "000f75c37a68",
+ "audio/words/wa.mp3": "c3bd9bafdb7c",
+ "audio/words/wo.mp3": "bbac27245e2c",
+ "audio/words/ya.mp3": "2cdc72d1a00a",
+ "audio/words/yo.mp3": "2f2b25f323d1",
+ "audio/words/yu.mp3": "1e45d705f409",
+ "css/style.css": "b55eb2b5e236",
+ "fonts/klee.woff2": "a3e181060646",
+ "fonts/mplus-rounded-bold.woff2": "5bb02bc6ce94",
+ "fonts/mplus-rounded-medium.woff2": "1645758cff4d",
+ "icons/icon-192.png": "6e0ca662a370",
+ "icons/icon-512.png": "0c2ab8211342",
+ "icons/icon-maskable-512.png": "089983512a58",
+ "index.html": "1fbbe6265939",
+ "js/audio.js": "531e06024c76",
+ "js/data.js": "5937176b4daa",
+ "js/games/core.js": "f9e466a5b159",
+ "js/games/extra.js": "18acb239401c",
+ "js/games/more.js": "76ff2365f073",
+ "js/learn.js": "3b72514b6056",
+ "js/main.js": "5e05cc1177aa",
+ "js/session.js": "acba318627c2",
+ "js/store.js": "3a11c8230dcc",
+ "js/trace.js": "0caa520f4bb7",
+ "js/ui.js": "f76e02ab79a4",
+ "js/update.js": "67b85d5f1834",
+ "js/vocab.js": "bae813648a8c",
+ "manifest.webmanifest": "749296ead23e",
+ "version.json": "369180dd5ad0"
+};
+const META = 'hq-meta.json';
+
+async function notify(msg) {
+  const all = await self.clients.matchAll({ includeUncontrolled: true });
+  all.forEach((c) => c.postMessage(msg));
+}
+
+async function previousVersion() {
+  const keys = (await caches.keys()).filter((k) => k.startsWith('hq-') && k !== VERSION);
+  for (const k of keys.reverse()) {
+    const c = await caches.open(k);
+    const m = await c.match(META);
+    if (m) return { cache: c, files: await m.json() };
+  }
+  return null;
+}
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    await caches.delete(VERSION); // start clean if an earlier attempt failed half-way
+    const cache = await caches.open(VERSION);
+    const prev = await previousVersion();
+    const entries = Object.entries(FILES);
+    let done = 0, fetched = 0, lastSent = 0;
+    const queue = entries.slice();
+    async function worker() {
+      while (queue.length) {
+        const [path, hash] = queue.shift();
+        let res = null;
+        if (prev && prev.files[path] === hash) res = await prev.cache.match(path);
+        if (!res) {
+          res = await fetch(new Request(`${path}?v=${hash}`, { cache: 'reload' }));
+          if (!res.ok) throw new Error(`download failed: ${path} (${res.status})`);
+          fetched++;
+        }
+        await cache.put(path, res);
+        done++;
+        const now = Date.now();
+        if (now - lastSent > 150 || done === entries.length) {
+          lastSent = now;
+          notify({ type: 'progress', done, total: entries.length });
+        }
+      }
+    }
+    try {
+      await Promise.all(Array.from({ length: 6 }, worker));
+      await cache.put(META, new Response(JSON.stringify(FILES), { headers: { 'content-type': 'application/json' } }));
+    } catch (err) {
+      await caches.delete(VERSION);
+      notify({ type: 'failed', message: String(err) });
+      throw err;
+    }
+    notify({ type: 'installed', fetched, total: entries.length });
+    // Start right away on the very first install, and when replacing the old (pre-auto-update)
+    // version, whose app code doesn't know how to ask for an update.
+    const legacy = !prev && (await caches.keys()).some((k) => k.startsWith('hq-') && k !== VERSION);
+    if (!self.registration.active || legacy) self.skipWaiting();
+  })());
 });
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'apply') self.skipWaiting();
+});
+
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
-    .then(() => self.clients.claim()));
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k.startsWith('hq-') && k !== VERSION).map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
+
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((r) => r || fetch(e.request)));
+  const req = e.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.searchParams.has('live')) return; // update checks go straight to the network
+  e.respondWith((async () => {
+    const cache = await caches.open(VERSION);
+    const hit = await cache.match(req, { ignoreSearch: true });
+    if (hit) return hit;
+    if (req.mode === 'navigate') {
+      const home = await cache.match('./');
+      if (home) return home;
+    }
+    return fetch(req);
+  })());
 });

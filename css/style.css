@@ -606,3 +606,10 @@ details.pp .avatar { font-size: 32px; font-family: var(--emoji); }
 .rm-pic.yes { animation: popin .4s; }
 .rm-pic.nope { opacity: .3; transform: scale(.94); }
 .toast:has(.step-toast) { top: 190px; }
+
+/* ---------- Update screen ---------- */
+.upd-panel { position: absolute; inset: 0; z-index: 90; background: rgba(247,241,227,.96); display: grid; place-items: center; animation: fade .3s both; }
+.upd-box { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 760px; text-align: center; }
+.upd-text { font-size: 28px; font-weight: 700; margin: 0; }
+.upd-bar { width: 420px; height: 18px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
+.upd-fill { width: 100%; height: 100%; background: var(--matcha); transform: scaleX(.04); transform-origin: 0 50%; transition: transform .3s; }
