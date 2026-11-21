@@ -31,10 +31,10 @@ def sw():
     skip = {'sw.js', 'README.md', 'version.json', '.gitignore'}
     files = []
     for d, dirs, fs in os.walk(ROOT):
-        dirs[:] = [x for x in dirs if not x.startswith('.') and x != 'tools']
+        dirs[:] = [x for x in dirs if not x.startswith('.') and x not in ('tools', 'voicetest')]
         for f in fs:
             rel = os.path.relpath(os.path.join(d, f), ROOT)
-            if rel.startswith(skip_dirs) or rel in skip or rel.endswith(('.zip', '.tmp.mp3')): continue
+            if rel.startswith(skip_dirs + ('voicetest',)) or rel in skip or rel.endswith(('.zip', '.tmp.mp3')): continue
             files.append(rel)
     files.sort()
     fp = lambda rel: hashlib.sha1(open(os.path.join(ROOT, rel), 'rb').read()).hexdigest()[:12]

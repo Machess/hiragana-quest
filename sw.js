@@ -6,7 +6,7 @@
 //   hand out an old copy of a changed file.
 // - All or nothing: if any file fails, the update is dropped and the current version stays.
 // - A new version waits until the app says it's a calm moment (message 'apply').
-const VERSION = 'hq-2dce47ffc3';
+const VERSION = 'hq-6945e517c5';
 const FILES = {
  "./": "1fbbe6265939",
  "audio/kana/a.mp3": "b967444c9707",
@@ -259,7 +259,7 @@ const FILES = {
  "js/vocab.js": "bae813648a8c",
  "js/wardrobe.js": "d434ef912210",
  "manifest.webmanifest": "749296ead23e",
- "version.json": "7f75b5812544"
+ "version.json": "19c6be499b35"
 };
 const META = 'hq-meta.json';
 
@@ -342,10 +342,16 @@ self.addEventListener('fetch', (e) => {
     const cache = await caches.open(VERSION);
     const hit = await cache.match(req, { ignoreSearch: true });
     if (hit) return hit;
-    if (req.mode === 'navigate') {
-      const home = await cache.match('./');
-      if (home) return home;
+    // Pages that aren't part of the game (e.g. /voicetest/) come from the network.
+    // Only when offline does a navigation fall back to the game's start page.
+    try {
+      return await fetch(req);
+    } catch (err) {
+      if (req.mode === 'navigate') {
+        const home = await cache.match('./');
+        if (home) return home;
+      }
+      throw err;
     }
-    return fetch(req);
   })());
 });

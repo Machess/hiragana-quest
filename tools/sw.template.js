@@ -89,10 +89,16 @@ self.addEventListener('fetch', (e) => {
     const cache = await caches.open(VERSION);
     const hit = await cache.match(req, { ignoreSearch: true });
     if (hit) return hit;
-    if (req.mode === 'navigate') {
-      const home = await cache.match('./');
-      if (home) return home;
+    // Pages that aren't part of the game (e.g. /voicetest/) come from the network.
+    // Only when offline does a navigation fall back to the game's start page.
+    try {
+      return await fetch(req);
+    } catch (err) {
+      if (req.mode === 'navigate') {
+        const home = await cache.match('./');
+        if (home) return home;
+      }
+      throw err;
     }
-    return fetch(req);
   })());
 });
