@@ -4,7 +4,7 @@ import * as A from '../audio.js';
 import { kana, record, introduce, pickTargets, distractors, shuffle, writingMode, stepOf, S } from '../learn.js';
 import { createTracePad, animatedKanaSVG, kanaSVG } from '../trace.js';
 import { settings } from '../store.js';
-import { guard } from '../session.js';
+import { guard, calm } from '../session.js';
 
 const HINTS = {
   shape: 'Almost! Watch and try again.',
@@ -52,10 +52,11 @@ export async function meet(s, h) {
   A.say('atarashii');
   A.sayKana(h, { gap: 800 });
   A.sayWord(h, { gap: 1100 });
+  A.afterSpeech(go);
   await new Promise((res) => go.addEventListener('click', res, { once: true }));
-  guard(s);
+  await calm(s, 500);
   await writeOne(s, h, { level: 0, mode: 'trace', title: 'Trace it' });
-  guard(s);
+  await calm(s, 700);
   await writeOne(s, h, { level: 1, mode: 'trace', title: 'Again, nice and slow!' });
 }
 
@@ -141,7 +142,7 @@ export async function trace(s, { pool, boost = [], only = null, count = 3 }) {
   // path step asks for, so a character moves from tracing to copying as it practises).
   const targets = Array.from({ length: Math.max(1, Math.min(count, only && only.length ? count : uniq.length)) }, (_, i) => uniq[i % uniq.length]);
   for (const h of targets) {
-    guard(s);
+    await calm(s, 700);
     await writeOne(s, h, writingMode(p, h));
   }
 }
@@ -151,7 +152,7 @@ export async function listen(s, { pool, boost = [], only = null, count = 6 }) {
   const p = s.p;
   const targets = pickTargets(p, pool, count, boost, only);
   for (const h of targets) {
-    guard(s);
+    await calm(s, 700);
     const st = stepOf(p, h);
     let n = st <= S.hear ? 2 : st <= S.read ? 3 : 4;
     n = Math.min(n, pool.length);
@@ -204,7 +205,7 @@ export async function picwrite(s, { pool, boost = [], only = null, count = 3 }) 
   const cand = writable(p, pool, only);
   const targets = [...new Set(pickTargets(p, cand, Math.min(count, cand.length) + 2, boost, cand))].slice(0, count);
   for (const h of targets) {
-    guard(s);
+    await calm(s, 700);
     await writeOne(s, h, { level: memoryLevel(p, h), mode: 'write', cue: 'word', title: 'Write the missing sound!' });
   }
 }
@@ -215,7 +216,7 @@ export async function dictation(s, { pool, boost = [], only = null, count = 3 })
   const cand = writable(p, pool, only);
   const targets = [...new Set(pickTargets(p, cand, Math.min(count, cand.length) + 2, boost, cand))].slice(0, count);
   for (const h of targets) {
-    guard(s);
+    await calm(s, 700);
     await writeOne(s, h, { level: memoryLevel(p, h), mode: 'write', cue: 'dictation', title: 'Listen, then write what you hear!' });
   }
 }

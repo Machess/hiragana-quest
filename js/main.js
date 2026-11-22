@@ -204,6 +204,7 @@ async function runAdventure() {
   try {
     for (let i = 0; i < plan.steps.length; i++) {
       const step = plan.steps[i];
+      if (i > 0) await s.calm(900);   // let the last game finish talking, then a breath
       const r = await runStep(s, step, plan.pool);
       if (s.exited) return;
       s.nextStep();
@@ -219,6 +220,7 @@ async function runAdventure() {
         }
       }
     }
+    await s.calm(900);
   } catch (e) {
     if (e instanceof ExitError) return;
     throw e;
@@ -232,8 +234,8 @@ async function runAdventure() {
 // "You're doing great — try Level 2 now?" Yes adds the next level's games to this adventure.
 function offerNextLevel(s, level) {
   return new Promise((res) => {
-    const later = el('button', { class: 'btn soft big' }, 'Next time');
-    const yes = el('button', { class: 'btn big' }, 'Yes!');
+    const later = A.afterSpeech(el('button', { class: 'btn soft big' }, 'Next time'));
+    const yes = A.afterSpeech(el('button', { class: 'btn big' }, 'Yes!'));
     later.onclick = () => res(false);
     yes.onclick = () => res(true);
     s.view('check-card offer', el('h2', {}, `So good! Try Level ${level} now?`),
@@ -275,7 +277,7 @@ async function stepsSummary(climbed) {
   }
   const rows = [...byChar.values()].slice(0, 6).map((e) =>
     el('div', { class: 'sum-row' }, el('span', { class: 'sum-kana kana' }, e.h), pathStones(p, e.h, { compact: true, lit: e.steps })));
-  const next = el('button', { class: 'btn big' }, 'Next');
+  const next = A.afterSpeech(el('button', { class: 'btn big' }, 'Next'));
   screen('summary', el('h2', {}, 'Steps you climbed today'), el('div', { class: 'sum-list' }, ...rows),
     el('div', { class: 'center' }, mochi('happy', 'md'), next));
   A.chime(1);
@@ -302,7 +304,7 @@ async function trophyCeremony({ earned, rows }) {
       if (t.level === 3) petals(10);
       await wait(800);
     }
-    const next = el('button', { class: 'btn big' }, 'Next');
+    const next = A.afterSpeech(el('button', { class: 'btn big' }, 'Next'));
     v.append(el('div', { class: 'center' }, next));
     await new Promise((r) => next.addEventListener('click', r, { once: true }));
   }
@@ -312,7 +314,7 @@ async function stampEnd(s) {
   const p = profile;
   const card = stampCard(p, true);
   const m = mochi('sleepy', 'md');
-  const done = el('button', { class: 'btn big' }, 'Done');
+  const done = el('button', { class: 'btn big', disabled: true }, 'Done');
   screen('stamp-end',
     el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, el('span', { class: 'said-ja kana' }, A.line('ganbatta').ja), `Great work today! You got ${s.correctCount} right`,
       s.coinsEarned ? el('span', { class: 'earned' }, ' and earned ', kobanPill(s.coinsEarned)) : '', '.')),
@@ -322,6 +324,7 @@ async function stampEnd(s) {
   A.stampThunk();
   card.querySelector('.stamp.new')?.classList.add('land');
   A.say('ganbatta', { lead: 700 });
+  A.afterSpeech(done);
   done.onclick = () => showHome();
 }
 
@@ -528,8 +531,9 @@ async function runDojo(type, chosen, back) {
   else steps.push({ type, only: sel, count: PER_CHAR.has(type) ? Math.min(DOJO_MAX, Math.max(COUNTS[type] || 6, sel.length)) : (COUNTS[type] || 6) });
   const s = new Session({ profile: p, root: app, steps: steps.length, onExit: back });
   try {
-    for (const st of steps) {
+    for (const [k, st] of steps.entries()) {
       if (st.type !== 'meet' && st.only) st.only = st.only.filter((h) => isIntroduced(p, h) || sel.includes(h));
+      if (k > 0) await s.calm(900);
       await runStep(s, st, pool);
       if (s.exited) return;
       s.nextStep();
@@ -538,6 +542,7 @@ async function runDojo(type, chosen, back) {
     if (e instanceof ExitError) return;
     throw e;
   }
+  await s.calm(900);
   s.end();
   const shown = new Set([...seen, ...Object.keys(s.practiced).filter((h) => chosen.includes(h))]);
   dojoLast = { key, shown: shown.size >= chosen.length ? new Set() : shown };
@@ -565,9 +570,9 @@ function mixFor(p, pool, sel) {
 }
 
 function dojoEnd(type, sel, back) {
-  const again = el('button', { class: 'btn big' }, 'Again!');
+  const again = A.afterSpeech(el('button', { class: 'btn big' }, 'Again!'));
   again.onclick = () => runDojo(type, sel, back);
-  const other = el('button', { class: 'btn soft' }, 'Back');
+  const other = A.afterSpeech(el('button', { class: 'btn soft' }, 'Back'));
   other.onclick = back;
   screen('dojo-end', mochi('happy', 'lg'), el('div', { class: 'bubble' }, ...said('yokudekimashita', 'Nice practice!')),
     el('div', { class: 'row-btns center' }, other, again));
@@ -595,6 +600,7 @@ async function runDojoKaruta(players, sel) {
   const s = new Session({ profile: p, root: app, steps: 1, onExit: showDojo });
   try {
     await karuta(s, { pool, boost: [], only: sel, players });
+    await s.calm(900);
   } catch (e) {
     if (e instanceof ExitError) return;
     throw e;

@@ -73,22 +73,36 @@ export class Session {
     this.correctCount++;
     if (h) this.practiced[h] = (this.practiced[h] || 0) + 1;
     if (this.streak > (this.p.bestStreak || 0)) { this.p.bestStreak = this.streak; save(); }
-    if (this.streak % 5 === 0) {
-      const big = this.streak % 10 === 0;
-      this.lanterns = Math.min(5, this.lanterns + 1);
-      [...this.lanternBar.children].forEach((l, i) => l.classList.toggle('lit', i < this.lanterns));
-      const lamp = this.lanternBar.children[this.lanterns - 1];
-      lamp && (lamp.classList.remove('glow'), void lamp.offsetWidth, lamp.classList.add('glow'));
-      A.chime(big ? 2 : 1);
-      petals(big ? 18 : 12);
-      this.mini.setMood('happy');
-      this.mini.hop();
-      setTimeout(() => this.mini.setMood('idle'), 1600);
-      A.say(big ? 'streak10' : 'streak5', { gap: 700 });
-      toast(el('span', { class: 'streak-toast said' }, ...said(big ? 'streak10' : 'streak5', `${this.streak} in a row!`)), 1600);
-    } else {
-      A.chime(0);
-    }
+    // Streak milestones are celebrated at the next calm moment (after Mochi has finished what
+    // she is saying about this answer), never on top of it.
+    if (this.streak % 5 === 0) this.pendingStreak = this.streak;
+    A.chime(0);
+  }
+  async celebrateStreak(n) {
+    const big = n % 10 === 0;
+    this.lanterns = Math.min(5, this.lanterns + 1);
+    [...this.lanternBar.children].forEach((l, i) => l.classList.toggle('lit', i < this.lanterns));
+    const lamp = this.lanternBar.children[this.lanterns - 1];
+    lamp && (lamp.classList.remove('glow'), void lamp.offsetWidth, lamp.classList.add('glow'));
+    A.chime(big ? 2 : 1);
+    petals(big ? 18 : 12);
+    this.mini.setMood('happy');
+    this.mini.hop();
+    const close = toast(el('span', { class: 'streak-toast said' }, ...said(big ? 'streak10' : 'streak5', `${n} in a row!`)), 0);
+    await A.say(big ? 'streak10' : 'streak5', { lead: 500 });
+    await A.idle();
+    await wait(700);
+    close();
+    this.mini.setMood('idle');
+  }
+  // The calm moment between one thing and the next: wait until Mochi has finished talking,
+  // celebrate a streak if one is due, then a short pause before the view changes.
+  async calm(pause = 700) {
+    guard(this);
+    await A.idle();
+    if (this.pendingStreak) { const n = this.pendingStreak; this.pendingStreak = 0; await this.celebrateStreak(n); }
+    await wait(pause);
+    guard(this);
   }
   // A character moved one stone along its path: a small, calm moment.
   stepUp({ h, from, to }) {
@@ -133,6 +147,7 @@ export class Session {
 // Throw this to abort a game when the player leaves mid-way.
 export class ExitError extends Error {}
 export function guard(s) { if (s.exited) throw new ExitError(); }
+export const calm = (s, pause) => s.calm(pause);
 
 // ---------------- Adventure planning ----------------
 // One pair at a time (あい, うえ, お …), one row at a time. An adventure works on the current

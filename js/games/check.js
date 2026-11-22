@@ -6,11 +6,12 @@ import * as A from '../audio.js';
 import { UNITS, LEVELS, rowUnits, introduced, reviewChars, levelReady, levelUp, unitLevel } from '../learn.js';
 import { listen, trace, dictation } from './core.js';
 import { detective } from './more.js';
-import { guard } from '../session.js';
+import { guard, calm } from '../session.js';
 import { addCoins, EARN } from '../wardrobe.js';
 
 function card(s, cls, ...children) {
   const next = el('button', { class: 'btn big' }, cls === 'start' ? 'Start!' : 'Next');
+  A.afterSpeech(next);
   s.view(`check-card ${cls}`, ...children, el('div', { class: 'center' }, next));
   return new Promise((r) => next.addEventListener('click', r, { once: true }));
 }
@@ -55,14 +56,14 @@ export async function levelCheck(s, { unitId, level }) {
     el('div', { class: 'check-side' }, startMochi, el('div', { class: 'bubble' }, finale ? 'Show Mochi the whole row! A slip or two is OK.' : 'Show Mochi what you know! One slip is OK.')));
   A.chime(1);
   await start;
-  guard(s);
+  await calm(s, 400);
 
   const missBefore = s.missCount;
   for (const [game, o] of parts) {
-    guard(s);
+    await calm(s, 700);
     await game(s, { boost: [], ...o });
   }
-  guard(s);
+  await calm(s, 700);
   const slips = s.missCount - missBefore;
   const passed = slips <= allowed;
 

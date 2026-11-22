@@ -3,7 +3,7 @@ import { said, el, mochi, wait, speakerIcon, onTap, reduced } from '../ui.js';
 import * as A from '../audio.js';
 import { kana, record, pickTargets, distractors, shuffle } from '../learn.js';
 import { save } from '../store.js';
-import { guard } from '../session.js';
+import { guard, calm } from '../session.js';
 
 function speaker(fn, cls = '') {
   const b = el('button', { class: `speaker ${cls}`, 'aria-label': 'Play sound', html: speakerIcon() });
@@ -83,7 +83,7 @@ export async function goldfish(s, { pool, boost = [], only = null, count = 6 }) 
   raf = requestAnimationFrame(loop);
   try {
     for (const h of targets) {
-      guard(s);
+      await calm(s, 500);
       cur = h;
       v.dataset.target = h;
       let firstTry = true;
@@ -234,7 +234,7 @@ export async function karuta(s, { pool, boost = [], only = null, players }) {
   let cur = null;
   const fill = paw.firstChild;
   for (const h of order) {
-    guard(s);
+    await calm(s, 500);
     cur = h;
     s.stage.dataset.target = h;
     await wait(1200);

@@ -721,3 +721,5 @@ h2.said .said-en { font-size: 1em; color: inherit; font-weight: 800; }
 .check-side .bubble { max-width: 560px; }
 .check-trophies { display: flex; gap: 24px; }
 .check-trophies .cer-item { width: 150px; }
+/* A button waiting for Mochi to finish talking */
+.btn.waiting { opacity: 0.45; filter: saturate(0.6); }

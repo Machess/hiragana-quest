@@ -127,9 +127,9 @@ async def play_view(pg, seen):
             if cls2 not in seen: seen.add(cls2); await shot(pg, cls2.replace('view ','').replace(' ','-'))
         print('   [check]', cls2.replace('view check-card ',''), '|', title)
         if 'offer' in cls2:
-            await pg.click('text=Next time' if TAKE_BONUS[0] is False else 'text=Yes!')
+            await pg.click('text=Next time' if TAKE_BONUS[0] is False else 'text=Yes!', timeout=15000)
         else:
-            await pg.click('.view .btn.big')
+            await pg.click('.view .btn.big', timeout=15000)
         await pg.wait_for_timeout(400)
     elif kind=='karuta-end':
         await pg.wait_for_timeout(2600)
@@ -141,13 +141,13 @@ async def adventure(pg, seen, label):
         await pg.wait_for_timeout(200)
         if await pg.locator('.screen.summary').count():
             await pg.wait_for_timeout(1500); await shot(pg, f'summary-{label}')
-            await pg.click('text=Next'); continue
+            await pg.click('text=Next', timeout=15000); continue
         if await pg.locator('.screen.ceremony').count():
             await pg.wait_for_timeout(4000); await shot(pg, f'ceremony-{label}')
-            await pg.click('text=Next')
+            await pg.click('text=Next', timeout=15000)
         if await pg.locator('.screen.stamp-end').count():
             await pg.wait_for_timeout(1800); await shot(pg, f'stamp-{label}')
-            await pg.click('text=Done'); return
+            await pg.click('text=Done', timeout=15000); return
         if await pg.locator('.view').count():
             try:
                 await play_view(pg, seen)
@@ -167,7 +167,9 @@ async def main(mode):
           const _orig = window.fetch;
         """)
         await pg.add_init_script("""
-          window.__audioLog = [];
+          window.__audioLog = []; window.__views = [];
+          new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.classList && (n.classList.contains('view') || n.classList.contains('screen'))) window.__views.push({ t: performance.now(), c: n.className }); })
+            .observe(document, { childList: true, subtree: true });
           const _start = AudioBufferSourceNode.prototype.start;
           AudioBufferSourceNode.prototype.start = function(...a) {
             const d = this.buffer ? this.buffer.duration : 0;
@@ -204,6 +206,9 @@ async def main(mode):
         log = await pg.evaluate("window.__audioLog.filter(x => x.d >= 0.4).sort((a,b)=>a.t0-b.t0)")
         overl = sum(1 for a,b in zip(log, log[1:]) if b['t0'] < a['t1'] - 30)
         gaps = sorted(b['t0']-a['t1'] for a,b in zip(log, log[1:]) if b['t0'] >= a['t1'] - 30)
+        views = await pg.evaluate("window.__views")
+        cross = [(round(a['t0']), v['c']) for v in views for a in log if a['t0'] + 60 < v['t'] < a['t1'] - 60]
+        print('speech still playing when the view changed:', len(cross), cross[:8])
         print(f"speech clips {len(log)}, overlapping pairs {overl}, shortest gaps ms {[round(g) for g in gaps[:5]]}, median gap {round(gaps[len(gaps)//2]) if gaps else None}")
         await b.close()
     print('ERRORS:', *errors[:30], sep='\n')

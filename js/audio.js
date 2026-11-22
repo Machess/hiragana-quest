@@ -94,6 +94,22 @@ async function pump() {
     item.resolve();
   }
   playing = false;
+  const w = idleWaiters; idleWaiters = [];
+  w.forEach((f) => f());
+}
+// Resolves once Mochi (and every queued clip) has finished speaking.
+let idleWaiters = [];
+export function idle() {
+  if (!playing && !queue.length) return Promise.resolve();
+  return new Promise((r) => idleWaiters.push(r));
+}
+// A button that moves the child on stays asleep until the talking is done, so nothing is rushed.
+export function afterSpeech(btn, extra = 500) {
+  btn.disabled = true;
+  btn.classList.add('waiting');
+  // (checked a moment later, so lines queued right after this call are waited for too)
+  setTimeout(() => idle().then(() => setTimeout(() => { btn.disabled = false; btn.classList.remove('waiting'); }, extra)), 30);
+  return btn;
 }
 
 // Play a speech clip. Returns a promise that resolves when it has finished.
@@ -117,7 +133,7 @@ export const sayWord = (h, opts) => play(wordUrl(h), opts);
 export const sayVocab = (id, opts) => play(`audio/vocab/${id}.mp3`, opts);
 // Mochi's lines: Japanese, then (while the child is still learning the phrase) the same in
 // English with a Japanese accent. Setting 'echo': 'fade' (default) | 'always' | 'off'.
-const ECHO_GAP = 380;
+const ECHO_GAP = 750;   // a relaxed breath between the Japanese and the English
 let echoProfile = null;
 export function setEchoProfile(p) { echoProfile = p; }
 function wantsEcho(id) {

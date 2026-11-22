@@ -3,7 +3,7 @@
 import { said, el, mochi, wait, speakerIcon, onTap } from '../ui.js';
 import * as A from '../audio.js';
 import { record, pickTargets, distractors, shuffle, lookalikePairs, mastery, playableWords } from '../learn.js';
-import { guard } from '../session.js';
+import { guard, calm } from '../session.js';
 import { WORDS } from '../vocab.js';
 
 function speaker(fn, cls = '') {
@@ -30,7 +30,7 @@ export async function detective(s, { pool, boost = [], only = null, count = 5 })
   const targets = pickTargets(p, pool, count, boost, only);
   let first = true;
   for (const h of targets) {
-    guard(s);
+    await calm(s, 700);
     const hear = hearOf(p, h);
     const n = Math.min(pool.length, hear < 0.4 ? 2 : 3);
     const options = shuffle([h, ...distractors(h, pool, n - 1, true)]);
@@ -80,7 +80,7 @@ export async function spot(s, { pool, boost = [], only = null, count = 5 }) {
   const seq = pickTargets(p, pool, count, boost, only);
   const sizes = [[3, 3], [4, 3], [5, 3], [6, 3], [6, 3]];
   for (let round = 0; round < count; round++) {
-    guard(s);
+    await calm(s, 700);
     const a = seq[round % seq.length];
     const pair = [a, distractors(a, pool, 1, true)[0]];
     const [same, odd] = [pair[1], pair[0]];   // the target is the one to find
@@ -180,7 +180,7 @@ export async function sushi(s, { pool, boost = [], only = null, count = 3 }) {
   const retried = new Set();
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
-    guard(s);
+    await calm(s, 700);
     cur = w;
     v.dataset.target = w.w;
     const chars = [...w.w];
@@ -263,7 +263,7 @@ export async function river(s, { pool, boost = [], only = null, count = 3 }) {
   const jump = () => { restart(walker, 'jumping'); };
 
   for (const w of words) {
-    guard(s);
+    await calm(s, 700);
     const chars = [...w.w];
     stonesLayer.replaceChildren();
     goal.replaceChildren();
@@ -276,7 +276,7 @@ export async function river(s, { pool, boost = [], only = null, count = 3 }) {
     let wordMisses = 0;
     v.dataset.word = w.w;
     for (let i = 0; i < chars.length; i++) {
-      guard(s);
+      await calm(s, 300);
       const h = chars[i];
       cur = h;
       v.dataset.target = h;

@@ -204,7 +204,9 @@ export function toast(content, ms = 1800) {
   const t = el('div', { class: 'toast' }, content);
   overlay().append(t);
   requestAnimationFrame(() => t.classList.add('show'));
-  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, ms);
+  const close = () => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); };
+  if (ms) setTimeout(close, ms);
+  return close;
 }
 
 // Parent gate: the button must be held for `ms` milliseconds.
