@@ -136,7 +136,10 @@ export async function trace(s, { pool, boost = [], only = null, count = 3 }) {
   const cand = only && only.length ? only : pool;
   // Chosen characters (Dojo): all of them, shuffled. Otherwise the least-practised first.
   const order = only && only.length ? shuffle([...cand]) : [...cand].sort((a, b) => stepOf(p, a) - stepOf(p, b));
-  const targets = [...new Set([...boost.filter((h) => cand.includes(h)), ...order])].slice(0, count);
+  const uniq = [...new Set([...boost.filter((h) => cand.includes(h)), ...order])];
+  // More rounds than characters: go round the list again (each round uses the mode its
+  // path step asks for, so a character moves from tracing to copying as it practises).
+  const targets = Array.from({ length: Math.max(1, Math.min(count, only && only.length ? count : uniq.length)) }, (_, i) => uniq[i % uniq.length]);
   for (const h of targets) {
     guard(s);
     await writeOne(s, h, writingMode(p, h));

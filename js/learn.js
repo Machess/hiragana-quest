@@ -114,32 +114,90 @@ export function introduce(p, h) {
 
 export const introduced = (p) => KANA.map((k) => k.h).filter((h) => isIntroduced(p, h));
 
-// The next row opens when every character in the row before has passed "Hear it".
-export function rowUnlocked(p, rowIndex) {
-  if (rowIndex === 0) return true;
-  return ROW_CHARS[rowIndex - 1].chars.every((h) => stepOf(p, h) > S.hear);
-}
-// A row is complete (gold) when every character in it has passed "Use it".
-export function rowComplete(p, rowIndex) {
-  return ROW_CHARS[rowIndex].chars.every((h) => stepOf(p, h) > S.use);
-}
-
-// New characters for an adventure: a couple at a time, only while few are still "in flight".
-export function newCharsForSession(p) {
-  const intro = introduced(p);
-  const inFlight = intro.filter((h) => stepOf(p, h) <= S.hear).length;
-  const n = intro.length < 2 ? 2 : Math.min(2, Math.max(0, 3 - inFlight));
+// ---------------- Pairs and levels ----------------
+// Hiragana are learned two at a time (あい, うえ, お …), one row at a time. Each pair climbs
+// three levels; a level is passed when its characters have done the practice it needs AND
+// the child passes a short level check. Later levels mix in more hiragana: Level 2 uses the
+// pairs learned so far in the row, Level 3 brings back earlier rows too.
+export const LEVELS = [
+  null,
+  { n: 1, medal: 'Bronze', name: 'Meet & Write', icon: '✍️', need: S.hear },    // past Trace + Copy
+  { n: 2, medal: 'Silver', name: 'Hear & Read', icon: '👂', need: S.write },    // past Hear it + Read it
+  { n: 3, medal: 'Gold', name: 'Use & Mix', icon: '🍣', need: S.master },        // past Write it + Use it
+];
+export const UNITS = ROW_CHARS.flatMap((r, ri) => {
   const out = [];
-  for (let r = 0; r < ROW_CHARS.length && out.length < n; r++) {
-    if (!rowUnlocked(p, r)) break;
-    for (const h of ROW_CHARS[r].chars) {
-      if (out.length >= n) break;
-      if (!isIntroduced(p, h)) out.push(h);
-    }
-    if (out.length) break; // don't spill into the next row in the same session
+  for (let k = 0; k < r.chars.length; k += 2) {
+    out.push({ id: `${r.id}${k / 2}`, row: ri, chars: r.chars.slice(k, k + 2), last: k + 2 >= r.chars.length });
   }
   return out;
+});
+export const unitOf = (h) => UNITS.find((u) => u.chars.includes(h));
+export const rowUnits = (ri) => UNITS.filter((u) => u.row === ri);
+
+// Saves from before levels: each pair gets the level its characters' path steps already show.
+export function ensureUnits(p) {
+  if (p.units) return p.units;
+  p.units = {};
+  for (const u of UNITS) {
+    const lv = Math.min(...u.chars.map((h) => {
+      if (!isIntroduced(p, h)) return 0;
+      const st = stepOf(p, h);
+      return st >= LEVELS[3].need ? 3 : st >= LEVELS[2].need ? 2 : st >= LEVELS[1].need ? 1 : 0;
+    }));
+    if (lv) p.units[u.id] = lv;
+  }
+  save();
+  return p.units;
 }
+export const unitLevel = (p, u) => (ensureUnits(p)[u.id] || 0);
+// The pair being learned now: the first one that hasn't reached Level 3. null = all done.
+export const currentUnit = (p) => UNITS.find((u) => unitLevel(p, u) < 3) || null;
+
+// Has the practice for this level been done? (The level check still has to be passed.)
+// Level 3 doesn't wait for word practice that isn't possible yet: with fewer than two
+// playable words for a character, passing Write it is enough (Use it carries on later).
+export function levelReady(p, u, level) {
+  const need = LEVELS[level].need;
+  return u.chars.every((h) => {
+    if (!isIntroduced(p, h)) return false;
+    const st = stepOf(p, h);
+    if (st >= need) return true;
+    if (level === 3 && st >= S.use) return wordsWith(introduced(p), h).length < 2;
+    return false;
+  });
+}
+export function levelUp(p, u) {
+  const lv = Math.min(3, unitLevel(p, u) + 1);
+  p.units[u.id] = lv;
+  save();
+  return lv;
+}
+
+// The next row opens when every pair in the row before has reached Level 3 (gold).
+export function rowUnlocked(p, rowIndex) {
+  return rowIndex === 0 || rowComplete(p, rowIndex - 1);
+}
+export function rowComplete(p, rowIndex) {
+  return rowUnits(rowIndex).every((u) => unitLevel(p, u) >= 3);
+}
+
+// New characters for the next adventure: the current pair, if it hasn't been met yet.
+export function newCharsForSession(p) {
+  const u = currentUnit(p);
+  return u ? u.chars.filter((h) => !isIntroduced(p, h)) : [];
+}
+// Characters to bring back for review: the weakest and longest-unseen first.
+export function reviewChars(p, chars, n) {
+  const now = Date.now();
+  const score = (h) => {
+    const c = p.chars[h] || { last: 0 };
+    const days = c.last ? Math.min((now - c.last) / 864e5, 7) : 7;
+    return (1.1 - mastery(p, h)) * (1 + days * 0.3) + Math.random() * 0.4;
+  };
+  return chars.map((h) => [score(h), h]).sort((a, b) => b[0] - a[0]).slice(0, n).map((x) => x[1]);
+}
+const wordsWith = (pool, h) => playableWords(pool, { max: 4 }).filter((w) => w.w.includes(h));
 
 // Weighted pick of practice targets. `only` restricts targets (Dojo picks, single-character practice).
 export function pickTargets(p, pool, n, boost = [], only = null) {
@@ -207,15 +265,10 @@ export function shuffle(a) {
   return a;
 }
 
-// Trophies follow the path: bronze = passed Copy, silver = passed Read it, gold = whole row passed Use it.
+// Trophies follow the levels: bronze = Level 1, silver = Level 2, gold = Level 3.
 export function trophyLevelNow(p, h) {
   if (!isIntroduced(p, h)) return 0;
-  const r = ROW_CHARS.indexOf(rowOf(h));
-  if (rowComplete(p, r)) return 3;
-  const st = stepOf(p, h);
-  if (st > S.read) return 2;
-  if (st > S.copy) return 1;
-  return 0;
+  return unitLevel(p, unitOf(h));
 }
 export function updateTrophies(p) {
   const earned = [];

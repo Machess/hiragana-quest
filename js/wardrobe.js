@@ -10,6 +10,7 @@ export const EARN = {
   adventure: 3,       // finishing an adventure
   step: 1,            // a character climbs a stone on its path
   master: 5,          // a character reaches ⭐
+  level: 2,           // a pair passes a level check
   row: 10,            // a whole row turns gold
 };
 

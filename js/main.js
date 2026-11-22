@@ -8,7 +8,8 @@ import {
   ROW_CHARS, introduced, mastery, rowUnlocked, rowComplete, kana, updateTrophies, playableWords,
   STEPS, MASTERED, stepOf, isIntroduced, charState, lookalikePairs, writingMode, introduce,
 } from './learn.js';
-import { Session, ExitError, planAdventure, finishSession } from './session.js';
+import { Session, ExitError, planAdventure, planLevel, finishSession } from './session.js';
+import { levelCheck } from './games/check.js';
 import { meet, trace, listen, picwrite, dictation, writeOne } from './games/core.js';
 import { goldfish, memory, karuta } from './games/extra.js';
 import { detective, spot, sushi, river, readmatch } from './games/more.js';
@@ -118,13 +119,23 @@ function rowStrip(p) {
   }));
 }
 
+// What the next adventure is about: the current pair and its level, and the pairs of this row.
 function adventurePreview(p) {
+  const u = L.currentUnit(p);
+  if (!u) return el('div', { class: 'adv-preview' }, el('span', {}, 'Every pair is gold! Adventures now mix everything up.'));
+  const lv = L.unitLevel(p, u);
   const fresh = L.newCharsForSession(p);
-  const practice = introduced(p).filter((h) => !fresh.includes(h))
-    .sort((a, b) => mastery(p, a) - mastery(p, b)).slice(0, 4);
-  return el('div', { class: 'adv-preview' },
-    fresh.length ? el('span', {}, 'New: ', el('b', { class: 'kana' }, fresh.join(' '))) : null,
-    practice.length ? el('span', {}, 'Practice: ', el('b', { class: 'kana' }, practice.join(' '))) : null);
+  const units = L.rowUnits(u.row);
+  const at = units.indexOf(u);
+  return el('div', { class: 'adv-preview quest' },
+    el('div', { class: 'quest-now' }, fresh.length ? 'New: ' : 'Now: ', el('b', { class: 'kana' }, u.chars.join(' ')),
+      el('span', {}, ` · Level ${lv + 1} · ${L.LEVELS[lv + 1].icon} ${L.LEVELS[lv + 1].name}`)),
+    el('div', { class: 'quest-units' }, ...units.map((x, i) => {
+      const l = L.unitLevel(p, x);
+      return el('div', { class: `unit ${i === at ? 'now' : i > at ? 'later' : ''}` },
+        el('span', { class: 'unit-kana kana' }, x.chars.join('')),
+        el('span', { class: 'unit-stones' }, ...[1, 2, 3].map((n) => el('i', { class: n <= l ? `on m${n}` : '' }))));
+    })));
 }
 
 function showHome(greet = false) {
@@ -191,10 +202,22 @@ async function runAdventure() {
   A.preloadChars(plan.pool);
   const s = new Session({ profile: p, root: app, steps: plan.steps.length, onExit: () => showHome() });
   try {
-    for (const step of plan.steps) {
-      await runStep(s, step, plan.pool);
+    for (let i = 0; i < plan.steps.length; i++) {
+      const step = plan.steps[i];
+      const r = await runStep(s, step, plan.pool);
       if (s.exited) return;
       s.nextStep();
+      // Nearly everything right first try: offer the next level straight away (once per adventure).
+      const answered = s.correctCount + s.missCount;
+      if (step.type === 'check' && r && r.passed && step.level < 3 && !s.bonusOffered && answered && s.correctCount / answered >= 0.9) {
+        s.bonusOffered = true;
+        if (await offerNextLevel(s, step.level + 1)) {
+          const u = L.UNITS.find((x) => x.id === step.unitId);
+          const more = planLevel(p, u, step.level + 1).steps;
+          plan.steps.push(...more);
+          s.addSteps(more.length);
+        }
+      }
     }
   } catch (e) {
     if (e instanceof ExitError) return;
@@ -206,10 +229,24 @@ async function runAdventure() {
   await stampEnd(s);
 }
 
+// "You're doing great — try Level 2 now?" Yes adds the next level's games to this adventure.
+function offerNextLevel(s, level) {
+  return new Promise((res) => {
+    const later = el('button', { class: 'btn soft big' }, 'Next time');
+    const yes = el('button', { class: 'btn big' }, 'Yes!');
+    later.onclick = () => res(false);
+    yes.onclick = () => res(true);
+    s.view('check-card offer', el('h2', {}, `So good! Try Level ${level} now?`),
+      el('div', { class: 'check-side' }, mochi('happy', 'lg'), el('div', { class: 'bubble' }, `${L.LEVELS[level].icon} ${L.LEVELS[level].name}`)),
+      el('div', { class: 'row-btns center' }, later, yes));
+  });
+}
+
 const COUNTS = { trace: 3, listen: 6, goldfish: 6, detective: 5, spot: 4, picwrite: 3, dictation: 3, sushi: 3, readmatch: 4, river: 2 };
 async function runStep(s, step, pool) {
-  const o = { pool, boost: step.boost || [], only: step.only || null, count: step.count || COUNTS[step.type] };
+  const o = { pool: step.pool || pool, boost: step.boost || [], only: step.only || null, count: step.count || COUNTS[step.type] };
   switch (step.type) {
+    case 'check': return levelCheck(s, step);
     case 'meet': return meet(s, step.h);
     case 'trace': return trace(s, o);
     case 'listen': return listen(s, o);
@@ -719,7 +756,7 @@ function showTrophies() {
     el('div', { class: 'topline' }, backBtn(() => showHome()), el('h2', {}, `${p.name}’s Trophy Room`),
       el('div', { class: 'tcount' },
         el('span', { class: 'b' }, `● ${counts[0]}`), el('span', { class: 's' }, `● ${counts[1]}`), el('span', { class: 'g' }, `● ${counts[2]}`))),
-    el('p', { class: 'hint-text' }, 'Bronze: you can copy it · Silver: you can read it · Gold: the whole row can be used in words'),
+    el('p', { class: 'hint-text' }, 'Bronze: Level 1 (meet & write) · Silver: Level 2 (hear & read) · Gold: Level 3 (use & mix)'),
     el('div', { class: 'shelves' }, ...shelves));
 }
 
@@ -768,7 +805,8 @@ function showParent() {
     const locked = ROW_CHARS.findIndex((r, i) => !rowUnlocked(p, i));
     return el('details', { class: 'pp' },
       el('summary', {}, el('span', { class: 'avatar' }, p.avatar), `${p.name} — ${introduced(p).length} hiragana, ${p.stamps.length} adventures, best streak ${p.bestStreak || 0}, ${W.balance(p)} koban, ${(p.owned || []).length} of ${W.ITEMS.length} wardrobe items`),
-      locked > 0 ? el('p', { class: 'small' }, `Next row (${ROW_CHARS[locked].label}) opens when every ${ROW_CHARS[locked - 1].label}-row character has passed 👂 Hear it.`) : null,
+      (() => { const u = L.currentUnit(p); return u ? el('p', { class: 'small' }, `Now learning ${u.chars.join(' ')}: Level ${L.unitLevel(p, u) + 1} of 3 (${L.LEVELS[L.unitLevel(p, u) + 1].name}).`) : null; })(),
+      locked > 0 ? el('p', { class: 'small' }, `Next row (${ROW_CHARS[locked].label}) opens when every pair in the ${ROW_CHARS[locked - 1].label} row has reached Level 3.`) : null,
       table,
       el('div', { class: 'row-btns' },
         holdButton('Hold to reset progress', 2500, () => { S.resetProfile(p.id); showParent(); }, 'warn'),
@@ -785,7 +823,8 @@ function showParent() {
     el('section', { class: 'card-sec' }, el('h3', {}, 'Players'), plist),
     versionSection(),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'How it works'),
-      el('p', {}, 'Every hiragana walks its own path: 👀 Meet → ✍️ Trace → 🖍️ Copy → 👂 Hear it → 🔍 Read it → ✏️ Write it → 🍣 Use it → ⭐ Master. Tracing is kept short; copying freehand with a model comes next because forming letters by hand is what builds letter recognition. Recognising by sound and by sight comes before writing from memory (recall is harder than recognition). ⭐ needs correct answers on 3 separate days, because spaced practice is what makes it stick. Adventures (8–10 min) give each character the practice its step needs; the Dojo lets children practise any hiragana they choose.')),
+      el('p', {}, 'Hiragana are learned two at a time (あい, うえ, お…), one row at a time. Each pair climbs three levels: 1 · Meet & Write (tracing, then copying with a model, and hearing it among two), 2 · Hear & Read (recognising it by sound and by sight among the pairs learned so far in the row), 3 · Use & Mix (writing from memory, words, and earlier rows mixed in, so the か row keeps the あ row fresh). A level ends with a short check; one slip is fine, otherwise the check comes back next adventure. The next pair starts when this one reaches Level 3, and the next row when the whole row is gold, ending with a row challenge.'),
+      el('p', {}, 'Behind the levels every hiragana still walks its own path (👀 Meet → ✍️ Trace → 🖍️ Copy → 👂 Hear it → 🔍 Read it → ✏️ Write it → 🍣 Use it → ⭐ Master); ⭐ needs correct answers on 3 separate days, because spaced practice is what makes it stick. Each adventure (8–10 min) starts with a short warm-up from earlier pairs. A child who gets nearly everything right can try the next level in the same adventure. The Dojo lets children practise any hiragana they choose.')),
     el('section', { class: 'card-sec small' }, el('h3', {}, 'Credits'),
       el('p', {}, 'Voices: VOICEVOX:四国めたん, VOICEVOX:春日部つむぎ. Stroke data: KanjiVG © Ulrich Apel (CC BY-SA 3.0). Fonts: Klee One (Fontworks), M PLUS Rounded 1c (OFL).')),
   );

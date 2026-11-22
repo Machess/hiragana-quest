@@ -700,3 +700,24 @@ h2.said .said-en { font-size: 1em; color: inherit; font-weight: 800; }
 .echo-title { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
 .echo-set .toggle { font-size: 20px; padding-left: 12px; }
 .said-ja { word-break: keep-all; overflow-wrap: anywhere; }
+
+/* ---- Pairs and levels ---- */
+.adv-preview.quest { flex-direction: column; gap: 10px; }
+.quest-now { font-size: 20px; color: var(--ink-soft); }
+.quest-units { display: flex; gap: 10px; flex-wrap: wrap; }
+.unit { display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--card); border-radius: 14px; padding: 6px 12px; box-shadow: var(--shadow); border: 3px solid transparent; }
+.unit.now { border-color: var(--red); }
+.unit.later { opacity: 0.45; }
+.unit-kana { font-size: 26px; color: var(--ink); letter-spacing: .06em; }
+.unit-stones { display: flex; gap: 5px; }
+.unit-stones i { width: 14px; height: 14px; border-radius: 50%; background: #e7dcc6; }
+.unit-stones i.on.m1 { background: #c98a4b; }
+.unit-stones i.on.m2 { background: #a9b4c2; }
+.unit-stones i.on.m3 { background: #e6b422; }
+.view.check-card { flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
+.view.check-card h2 { font-size: 38px; margin: 0; text-align: center; }
+.check-kana { display: flex; gap: 28px; font-size: 150px; line-height: 1; color: var(--ink); }
+.check-side { display: flex; align-items: center; gap: 20px; }
+.check-side .bubble { max-width: 560px; }
+.check-trophies { display: flex; gap: 24px; }
+.check-trophies .cer-item { width: 150px; }

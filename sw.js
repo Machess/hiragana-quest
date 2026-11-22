@@ -6,7 +6,7 @@
 //   hand out an old copy of a changed file.
 // - All or nothing: if any file fails, the update is dropped and the current version stays.
 // - A new version waits until the app says it's a calm moment (message 'apply').
-const VERSION = 'hq-002391a62e';
+const VERSION = 'hq-4af66a81a7';
 const FILES = {
  "./": "1fbbe6265939",
  "audio/kana/a.mp3": "71bcedf81df8",
@@ -263,7 +263,7 @@ const FILES = {
  "audio/words/ya.mp3": "2cdc72d1a00a",
  "audio/words/yo.mp3": "2f2b25f323d1",
  "audio/words/yu.mp3": "1e45d705f409",
- "css/style.css": "ac5427b74bb0",
+ "css/style.css": "ea0789ce8d66",
  "fonts/klee.woff2": "a3e181060646",
  "fonts/mplus-rounded-bold.woff2": "5bb02bc6ce94",
  "fonts/mplus-rounded-medium.woff2": "1645758cff4d",
@@ -273,21 +273,22 @@ const FILES = {
  "index.html": "1fbbe6265939",
  "js/audio.js": "ad614a84cc0b",
  "js/data.js": "5937176b4daa",
- "js/games/core.js": "a0ce63f8d407",
+ "js/games/check.js": "eb54cc73fcf1",
+ "js/games/core.js": "57bb5bec919b",
  "js/games/extra.js": "322301fcf896",
  "js/games/more.js": "5f7d3a070fb9",
- "js/learn.js": "ba96bc3f8b9b",
+ "js/learn.js": "745fbab4ea06",
  "js/lines.js": "fd029d9044be",
- "js/main.js": "ea70d2f57c5f",
- "js/session.js": "d8a2eb5130fb",
+ "js/main.js": "b030b77796b4",
+ "js/session.js": "ceb5ad98b5d2",
  "js/store.js": "e0f51aa9e8fd",
  "js/trace.js": "0caa520f4bb7",
  "js/ui.js": "3565aabb33b3",
  "js/update.js": "67b85d5f1834",
  "js/vocab.js": "bae813648a8c",
- "js/wardrobe.js": "d434ef912210",
+ "js/wardrobe.js": "8f25a5613bfc",
  "manifest.webmanifest": "749296ead23e",
- "version.json": "5d749bf7c5db"
+ "version.json": "31a5c137216d"
 };
 const META = 'hq-meta.json';
 

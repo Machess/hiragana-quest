@@ -1,8 +1,13 @@
-import asyncio, sys, json, time
+import asyncio, sys, json, time, os, random
 from playwright.async_api import async_playwright
+import playwright
+
 URL='http://localhost:8765/'
 SH='/home/claude/test/shots'
 errors=[]
+TAKE_BONUS=[True]
+MISS=[float(os.environ.get('MISS','0'))]
+import random, os
 async def draw_char(pg, h, jitter=0):
     pts = await pg.evaluate("h => import('./js/trace.js').then(m => m.template(h).map(s => s.pts))", h)
     box = await pg.locator('.trace-pad').bounding_box()
@@ -26,6 +31,9 @@ async def step(pg, kind):
         opts = await v.get_attribute('data-options'); i = opts.index(t)
         await pg.locator('.det-option .det-pick').nth(i).evaluate(TAP)
     elif kind == 'spot':
+        if await pg.locator(f'.spot-cell[data-h="{t}"]').count() == 0:
+            info = await pg.evaluate("(() => { const v = document.querySelector('.view'); return v ? v.className + ' cells:' + [...new Set([...v.querySelectorAll('.spot-cell')].map(c => c.dataset.h))].join('') : 'none'; })()")
+            print('SPOT DEBUG target', t, info); await shot(pg, 'spot-debug'); return False
         await pg.locator(f'.spot-cell[data-h="{t}"]').first.evaluate(TAP)
     elif kind == 'sushi':
         idx = await pg.locator('.sushi-slot.filled').count()
@@ -75,13 +83,16 @@ async def play_view(pg, seen):
             seen.add(kind+'-done'); await shot(pg, kind+'-done')
         await pg.wait_for_function("!document.querySelector('.trace-pad') || !document.querySelector('.trace-pad.tp-done')", timeout=8000)
     elif kind=='listen':
-        t = await pg.evaluate("document.querySelector('.view').dataset.target")
-        # sometimes pick wrong first to test
+        t = await pg.evaluate("(document.querySelector('.view')||{dataset:{}}).dataset.target")
+        if not t: return kind
+        if MISS[0] and random.random() < MISS[0]:
+            wrong = pg.locator('.choice').filter(has_not_text=t)
+            if await wrong.count(): await wrong.first.dispatch_event('pointerdown'); await pg.wait_for_timeout(500)
         await pg.locator('.choice', has_text=t).first.dispatch_event('pointerdown')
         await pg.wait_for_timeout(1100)
     elif kind=='goldfish':
         await pg.wait_for_timeout(600)
-        t = await pg.evaluate("document.querySelector('.view').dataset.target")
+        t = await pg.evaluate("(document.querySelector('.view')||{dataset:{}}).dataset.target")
         ok = await pg.evaluate("t => { const f=[...document.querySelectorAll('.fish')].find(f => !f.classList.contains('leave') && f.querySelector('.fish-label').textContent===t); if(!f) return [...document.querySelectorAll('.fish')].map(f=>f.className+':'+f.textContent).join(','); f.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); return 'ok'; }", t)
         if ok!='ok': print('goldfish miss', repr(t), ok); await shot(pg,'gf-debug')
         await pg.wait_for_timeout(1100)
@@ -108,13 +119,25 @@ async def play_view(pg, seen):
     elif kind in ('detective','spot','sushi','river','readmatch'):
         await step(pg, kind)
         await pg.wait_for_timeout(250 if kind=='sushi' else 450)
+    elif kind=='check-card':
+        await pg.wait_for_timeout(500)
+        cls2 = await pg.evaluate("document.querySelector('.view').className")
+        title = await pg.evaluate("(document.querySelector('.view h2')||{}).textContent")
+        if 'start' in cls2 or 'pass' in cls2 or 'again' in cls2 or 'offer' in cls2:
+            if cls2 not in seen: seen.add(cls2); await shot(pg, cls2.replace('view ','').replace(' ','-'))
+        print('   [check]', cls2.replace('view check-card ',''), '|', title)
+        if 'offer' in cls2:
+            await pg.click('text=Next time' if TAKE_BONUS[0] is False else 'text=Yes!')
+        else:
+            await pg.click('.view .btn.big')
+        await pg.wait_for_timeout(400)
     elif kind=='karuta-end':
         await pg.wait_for_timeout(2600)
     return kind
 
 async def adventure(pg, seen, label):
     await pg.click('.adventure')
-    for i in range(160):
+    for i in range(400):
         await pg.wait_for_timeout(200)
         if await pg.locator('.screen.summary').count():
             await pg.wait_for_timeout(1500); await shot(pg, f'summary-{label}')
@@ -126,14 +149,17 @@ async def adventure(pg, seen, label):
             await pg.wait_for_timeout(1800); await shot(pg, f'stamp-{label}')
             await pg.click('text=Done'); return
         if await pg.locator('.view').count():
-            await play_view(pg, seen)
+            try:
+                await play_view(pg, seen)
+            except Exception as e:
+                if 'Timeout' not in str(e) and 'null' not in str(e): raise
     raise Exception('adventure did not finish')
 
 async def main(mode):
     async with async_playwright() as p:
         b = await p.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
         ctx = await b.new_context(viewport={'width':1280,'height':800}, device_scale_factor=1.5, has_touch=False)
-        pg = await ctx.new_page()
+        pg = await ctx.new_page(); pg.set_default_timeout(4000)
         pg.on('console', lambda m: m.type in ('error','warning') and errors.append(f'{m.type}: {m.text}'))
         pg.on('pageerror', lambda e: errors.append(f'pageerror: {e}'))
         await pg.add_init_script("""
@@ -164,7 +190,7 @@ async def main(mode):
               localStorage.setItem('hiraganaQuest.v1', JSON.stringify(st)); }""")
             await pg.reload(); await pg.wait_for_timeout(700)
             await adventure(pg, seen, f's{s}')
-            lv = await pg.evaluate("Object.keys(JSON.parse(localStorage.getItem('hiraganaQuest.v1')).profiles[0].chars).join('')")
+            lv = await pg.evaluate("(() => { const p = JSON.parse(localStorage.getItem('hiraganaQuest.v1')).profiles[0]; return Object.keys(p.chars).filter(h => p.chars[h].intro).join('') + ' units ' + JSON.stringify(p.units); })()")
             c = await pg.evaluate("JSON.parse(localStorage.getItem('hiraganaQuest.v1')).profiles[0].coins || 0")
             print('after session', s, 'introduced', lv, '| koban so far', c)
         await pg.click('text=Trophies'); await pg.wait_for_timeout(600); await shot(pg,'trophies')

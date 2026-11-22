@@ -5,7 +5,7 @@ import { safeScreen } from './update.js';
 import { countAnswer, addCoins, EARN, balance } from './wardrobe.js';
 import { kobanPill } from './ui.js';
 import * as A from './audio.js';
-import { introduced, newCharsForSession, updateTrophies, playableWords, onStepUp, stepOf, S, STEPS, MASTERED } from './learn.js';
+import { introduced, updateTrophies, playableWords, onStepUp, stepOf, S, STEPS, MASTERED, isIntroduced, ensureUnits, currentUnit, unitLevel, rowUnits, reviewChars } from './learn.js';
 import { save } from './store.js';
 
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -16,6 +16,7 @@ export class Session {
     this.streak = 0;
     this.lanterns = 0;
     this.correctCount = 0;
+    this.missCount = 0;
     this.practiced = {};
     this.exited = false;
     this.onExit = onExit;
@@ -48,6 +49,7 @@ export class Session {
     );
   }
   nextStep() { this.step++; this.renderStones(); }
+  addSteps(n) { this.steps += n; this.renderStones(); }
 
   // Clear the stage and put a fresh game view into it.
   view(cls, ...children) {
@@ -110,6 +112,7 @@ export class Session {
   miss(h) {
     // Quiet reset. No sad sounds, no "streak lost" message.
     this.streak = 0;
+    this.missCount++;
     if (h) this.practiced[h] = (this.practiced[h] || 0) + 1;
     A.tok();
   }
@@ -132,52 +135,77 @@ export class ExitError extends Error {}
 export function guard(s) { if (s.exited) throw new ExitError(); }
 
 // ---------------- Adventure planning ----------------
-// Every character gets the kind of practice its path step asks for, in a calm 8–10 minute session.
+// One pair at a time (あい, うえ, お …), one row at a time. An adventure works on the current
+// pair's level, opens with a short warm-up from earlier pairs, and ends with the level check
+// when the level's practice is done. Later levels mix in more hiragana:
+//   Level 1 · Meet & Write — only the new pair: meet, trace, copy, hear it (2 choices)
+//   Level 2 · Hear & Read  — the pair among the row so far: listen, goldfish, detective, spot, memory
+//   Level 3 · Use & Mix    — write from memory, words, and earlier rows mixed in (about a third)
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export function planAdventure(p) {
-  const fresh = newCharsForSession(p);
-  const pool = [...new Set([...introduced(p), ...fresh])];
-  const st = (h) => (fresh.includes(h) ? S.trace : stepOf(p, h));
-  const at = (lo, hi = lo) => pool.filter((h) => st(h) >= lo && st(h) <= hi);
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const words = playableWords(pool).length;
-  const steps = fresh.map((h) => ({ type: 'meet', h }));
-  const games = [];
+  ensureUnits(p);
+  const u = currentUnit(p);
+  if (!u) return planReview(p);
+  const target = unitLevel(p, u) + 1;
+  return { ...planLevel(p, u, target, { warmup: true }), unit: u, target };
+}
 
-  // ✍️🖍️ Hand: tracing and copying for characters at those steps.
-  const hand = at(S.trace, S.copy);
-  if (hand.length) games.push({ type: 'trace', only: hand.slice(0, 3), count: Math.min(3, hand.length) });
+// The games for one level of one pair (also used when a child earns a second level in one go).
+export function planLevel(p, u, target, { warmup = false } = {}) {
+  const fresh = u.chars.filter((h) => !isIntroduced(p, h));
+  const known = [...new Set([...introduced(p), ...fresh])];
+  const rowSoFar = rowUnits(u.row).flatMap((x) => x.chars).filter((h) => known.includes(h));
+  const others = known.filter((h) => !u.chars.includes(h));
+  const near = rowSoFar.length >= 2 ? rowSoFar : known;
+  const steps = [];
 
-  // 👂 Hear it: new and hear-step characters come up most.
-  const hearBoost = [...fresh, ...at(S.hear)];
-  const hearGames = [{ type: 'listen', count: 6 }, { type: 'goldfish', count: 6 }];
-  if (!fresh.length && pool.length >= 4) hearGames.push({ type: 'karuta' });
-  if (!fresh.length && words >= 3) hearGames.push({ type: 'river', count: 2 });
-  games.push({ ...(fresh.length ? hearGames[0] : pick(hearGames)), boost: hearBoost });
+  // Warm-up: a minute with earlier hiragana (the か row keeps the あ row fresh).
+  if (warmup && others.length >= 2) {
+    const r = reviewChars(p, others, Math.min(4, others.length));
+    steps.push({ type: pick(['listen', 'detective']), only: r, pool: known, count: r.length });
+  }
+  fresh.forEach((h) => steps.push({ type: 'meet', h }));
 
-  // 🔍 Read it
-  if (pool.length >= 3 && (at(S.read).length || at(S.write, MASTERED).length)) {
-    games.push({ ...pick([{ type: 'detective', count: 5 }, { type: 'spot', count: 4 }]), boost: at(S.read) });
+  if (target === 1) {
+    // Writing rounds still needed for Trace (3) + Copy (2) per character, meeting gives 2.
+    const left = u.chars.reduce((a, h) => {
+      const c = p.chars[h] || {}; const cnt = (c.cnt || {});
+      const tr = fresh.includes(h) ? 2 : (cnt.trace || 0);
+      return a + Math.max(0, 3 - tr) + Math.max(0, 2 - (cnt.copy || 0));
+    }, 0);
+    steps.push({ type: 'trace', only: u.chars, pool: u.chars, count: Math.max(2, Math.min(6, left)) });
+    steps.push({ type: 'listen', only: u.chars, pool: u.chars.length > 1 ? u.chars : near, count: 6 });
+    if (!fresh.length) steps.push({ type: 'goldfish', only: u.chars, pool: near, count: 6 });
+  } else if (target === 2) {
+    steps.push({ type: pick(['listen', 'goldfish']), boost: u.chars, pool: near, count: 6 });
+    steps.push({ type: pick(['detective', 'spot']), boost: u.chars, pool: near, count: 5 });
+    steps.push({ type: 'trace', only: u.chars, pool: u.chars, count: u.chars.length });
+    steps.push(near.length >= 3 ? { type: pick(['memory', 'detective', 'goldfish']), boost: u.chars, pool: near, count: 5 } : { type: 'listen', boost: u.chars, pool: near, count: 5 });
+  } else {
+    const words = playableWords(known, { max: 4 }).filter((w) => u.chars.some((h) => w.w.includes(h)));
+    steps.push({ type: pick(['picwrite', 'dictation']), only: u.chars, pool: known, count: 3 });
+    if (words.length) steps.push({ type: pick(words.length >= 3 ? ['sushi', 'readmatch', 'river'] : ['sushi']), only: u.chars, pool: known, count: 3 });
+    // Mix: the pair together with earlier hiragana (about a third of the questions).
+    const mix = [...u.chars, ...reviewChars(p, others, 3)];
+    steps.push({ type: pick(known.length >= 4 ? ['spot', 'detective', 'karuta', 'goldfish'] : ['detective', 'listen']), only: mix, pool: known, count: mix.length + 1 });
+    if (words.length >= 3) steps.push({ type: pick(['readmatch', 'river']), only: u.chars, pool: known, count: 3 });
+    else steps.push({ type: 'dictation', only: u.chars, pool: known, count: 2 });
   }
-  // ✏️ Write it (from memory for write-step characters, with start dots for those just past Copy)
-  if (at(S.hear, MASTERED).length) {
-    games.push({ ...pick([{ type: 'picwrite', count: 3 }, { type: 'dictation', count: 3 }]), boost: at(S.write) });
-  }
-  // 🍣 Use it
-  if (words >= 2 && at(S.read, MASTERED).length) {
-    games.push({ ...pick([{ type: 'sushi', count: 3 }, { type: 'readmatch', count: 4 }, { type: 'river', count: 2 }]), boost: at(S.use) });
-  }
-  // A playful bonus when there is room.
-  const max = fresh.length ? 4 : 6;
-  if (games.length < max) {
-    const used = new Set(games.map((g) => g.type));
-    const bonus = [{ type: 'memory' }];
-    if (pool.length >= 4) bonus.push({ type: 'karuta' });
-    if (pool.length >= 3) bonus.push({ type: 'spot', count: 4 });
-    const b = shuffle(bonus.filter((x) => !used.has(x.type)))[0];
-    if (b) games.push(b);
-  }
-  steps.push(...games.slice(0, max));
-  return { fresh, pool, steps };
+  steps.push({ type: 'check', unitId: u.id, level: target });
+  return { fresh, pool: known, steps };
+}
+
+// Everything is gold: mixed review, weakest hiragana first.
+function planReview(p) {
+  const known = introduced(p);
+  const weak = reviewChars(p, known, 6);
+  const steps = [
+    { type: pick(['listen', 'detective']), only: weak.slice(0, 4), count: 4 },
+    { type: pick(['picwrite', 'dictation']), only: weak.slice(0, 3), count: 3 },
+    { type: pick(['sushi', 'readmatch', 'river']), boost: weak, count: 3 },
+    { type: pick(['karuta', 'spot', 'goldfish', 'memory']), boost: weak, count: 5 },
+  ];
+  return { fresh: [], pool: known, steps };
 }
 
 export function finishSession(p, s, fresh) {
