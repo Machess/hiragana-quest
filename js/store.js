@@ -3,7 +3,7 @@ const KEY = 'hiraganaQuest.v1';
 
 const defaultState = () => ({
   profiles: [],
-  settings: { volume: 1, romaji: false, reducedMotion: false, openAll: false },
+  settings: { volume: 1, romaji: false, reducedMotion: false, openAll: false, echo: 'fade' },
   lastProfileId: null,
 });
 

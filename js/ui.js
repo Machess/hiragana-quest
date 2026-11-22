@@ -1,6 +1,14 @@
 // Small DOM helpers, the Mochi mascot, trophies, celebrations.
 import { settings } from './store.js';
 import { palette, hatLayer, heldLayer, reactionOf, celebrationOf } from './wardrobe.js';
+import { LINES } from './lines.js';
+
+// Speech-bubble content for one of Mochi's lines: the Japanese she says, then the English.
+// rest: English to show instead of the line's own (e.g. a longer instruction).
+export function said(id, rest = null) {
+  const L = LINES[id] || { ja: '', en: '' };
+  return [el('span', { class: 'said-ja kana' }, L.ja), el('span', { class: 'said-en' }, rest ?? L.en)];
+}
 
 export function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);

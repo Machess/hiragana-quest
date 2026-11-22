@@ -1,5 +1,5 @@
 // Goldfish Scoop, Memory Match, Karuta.
-import { el, mochi, wait, speakerIcon, onTap, reduced } from '../ui.js';
+import { said, el, mochi, wait, speakerIcon, onTap, reduced } from '../ui.js';
 import * as A from '../audio.js';
 import { kana, record, pickTargets, distractors, shuffle } from '../learn.js';
 import { save } from '../store.js';
@@ -179,7 +179,7 @@ export async function memory(s, { pool, boost = [], only = null }) {
           a.done = b.done = true;
           a.node.classList.add('matched'); b.node.classList.add('matched');
           record(p, a.h, 'hear', true, 0.08);
-          s.correct(a.h);
+          s.practise(a.h);   // a Memory match is partly luck: no streak, no koban
           matched++;
           lock = false;
           if (matched === chars.length) { await wait(900); done(); }
@@ -193,6 +193,7 @@ export async function memory(s, { pool, boost = [], only = null }) {
       grid.append(node);
     });
   });
+  grid.previousElementSibling?.replaceChildren(...said('yokudekimashita'));
   A.say('yokudekimashita', { lead: 600 });
   await wait(2200);
 }
@@ -300,7 +301,7 @@ export async function karuta(s, { pool, boost = [], only = null, players }) {
     : (score[0] === score[1] ? 'A tie! Great game!' : `${players[score[0] > score[1] ? 0 : 1].name} wins! Great game!`);
   s.view('karuta-end',
     mochi('happy', 'lg'),
-    el('div', { class: 'bubble center' }, msg),
+    el('div', { class: 'bubble center' }, ...said('yokudekimashita', msg)),
     el('div', { class: 'k-results' }, ...lines.map((l) => el('div', { class: 'k-res' }, l))),
   );
   void top;

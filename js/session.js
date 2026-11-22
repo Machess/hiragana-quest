@@ -1,6 +1,6 @@
 // A play session: top bar (progress stones + streak lanterns), streak celebrations,
 // and the adventure planner that strings games together.
-import { el, mochi, petals, icon, wait, toast, overlay, keepAwake } from './ui.js';
+import { said, el, mochi, petals, icon, wait, toast, overlay, keepAwake } from './ui.js';
 import { safeScreen } from './update.js';
 import { countAnswer, addCoins, EARN, balance } from './wardrobe.js';
 import { kobanPill } from './ui.js';
@@ -83,7 +83,7 @@ export class Session {
       this.mini.hop();
       setTimeout(() => this.mini.setMood('idle'), 1600);
       A.say(big ? 'streak10' : 'streak5', { gap: 700 });
-      toast(el('span', { class: 'streak-toast' }, `${this.streak} in a row!`), 1600);
+      toast(el('span', { class: 'streak-toast said' }, ...said(big ? 'streak10' : 'streak5', `${this.streak} in a row!`)), 1600);
     } else {
       A.chime(0);
     }
@@ -102,6 +102,11 @@ export class Session {
     }, 700);
   }
   end() { onStepUp(null); }
+  // Practice that doesn't count as an answer (Memory matches): no streak change, no koban.
+  practise(h) {
+    if (h) this.practiced[h] = (this.practiced[h] || 0) + 1;
+    A.chime(0);
+  }
   miss(h) {
     // Quiet reset. No sad sounds, no "streak lost" message.
     this.streak = 0;

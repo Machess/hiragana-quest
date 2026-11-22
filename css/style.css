@@ -689,3 +689,14 @@ details.pp .avatar { font-size: 32px; font-family: var(--emoji); }
 .dr-cele { position: relative; width: 96px; height: 96px; }
 .petal.still { position: absolute; animation: none; opacity: 1; }
 .dr-how { margin-top: auto; }
+
+/* ---- Mochi's lines in bubbles: Japanese first, English under it ---- */
+.said-ja { display: block; font-family: var(--kana); font-size: 0.95em; line-height: 1.25; }
+.said-en { display: block; font-size: 0.8em; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.toast .said-en, .streak-toast .said-en { color: inherit; opacity: 0.85; }
+h2.said .said-ja { font-size: 0.8em; }
+h2.said .said-en { font-size: 1em; color: inherit; font-weight: 800; }
+.echo-set { margin: 6px 0; }
+.echo-title { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+.echo-set .toggle { font-size: 20px; padding-left: 12px; }
+.said-ja { word-break: keep-all; overflow-wrap: anywhere; }

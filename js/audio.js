@@ -2,6 +2,7 @@
 // sounds (chime, pop, stamp). Nothing harsh: there is deliberately no "wrong" buzzer.
 import { kana } from './learn.js';
 import { settings } from './store.js';
+import { LINES } from './lines.js';
 
 let ctx = null;
 let master = null;
@@ -76,14 +77,19 @@ async function pump() {
   playing = true;
   while (queue.length) {
     const item = queue.shift();
-    const buf = await load(item.url);
+    const urls = item.urls || [item.url];
+    const bufs = await Promise.all(urls.map(load));
     const c = ac();
     if (c.state === 'suspended') await c.resume();
     const since = performance.now() - lastEnd;
     const pause = Math.max(item.gap - since, item.lead || 0);
     if (pause > 0) await new Promise((r) => setTimeout(r, pause));
-    if (item.cancelled) { item.resolve(); continue; }
-    if (buf) await startClip(buf);
+    for (let i = 0; i < bufs.length; i++) {
+      if (item.cancelled) break;
+      if (i > 0) await new Promise((r) => setTimeout(r, ECHO_GAP));   // short breath before the English
+      if (item.cancelled) break;
+      if (bufs[i]) await startClip(bufs[i]);
+    }
     lastEnd = performance.now();
     item.resolve();
   }
@@ -92,7 +98,7 @@ async function pump() {
 
 // Play a speech clip. Returns a promise that resolves when it has finished.
 // interrupt: stop whatever is speaking and play now (for taps on a speaker button).
-export function play(url, { interrupt = false, gap = GAP, lead = 0 } = {}) {
+export function play(url, { interrupt = false, gap = GAP, lead = 0, urls = null } = {}) {
   if (interrupt) {
     queue.forEach((q) => { q.cancelled = true; q.resolve(); });
     queue = [];
@@ -102,21 +108,41 @@ export function play(url, { interrupt = false, gap = GAP, lead = 0 } = {}) {
   }
   // Never let a backlog build up: keep at most two waiting clips.
   while (queue.length >= 2) { const old = queue.shift(); old.cancelled = true; old.resolve(); }
-  return new Promise((resolve) => { queue.push({ url, gap, lead, resolve }); pump(); });
+  return new Promise((resolve) => { queue.push({ url, urls, gap, lead, resolve }); pump(); });
 }
 export const isSpeaking = () => playing;
 
 export const sayKana = (h, opts) => play(kanaUrl(h), opts);
 export const sayWord = (h, opts) => play(wordUrl(h), opts);
 export const sayVocab = (id, opts) => play(`audio/vocab/${id}.mp3`, opts);
-export const say = (id, opts) => play(voiceUrl(id), opts);
+// Mochi's lines: Japanese, then (while the child is still learning the phrase) the same in
+// English with a Japanese accent. Setting 'echo': 'fade' (default) | 'always' | 'off'.
+const ECHO_GAP = 380;
+let echoProfile = null;
+export function setEchoProfile(p) { echoProfile = p; }
+function wantsEcho(id) {
+  const mode = settings().echo || 'fade';
+  if (mode === 'off' || !LINES[id]) return false;
+  if (mode === 'always' || !echoProfile) return true;
+  const heard = echoProfile.echo || (echoProfile.echo = {});
+  const n = (heard[id] = (heard[id] || 0) + 1);
+  // The first 8 times always; then now and then; after 24 times only Japanese.
+  return n <= 8 || (n <= 24 && Math.random() < 0.25);
+}
+export function say(id, opts = {}) {
+  const urls = wantsEcho(id) ? [voiceUrl(id), `audio/voice/en/${id}.mp3`] : null;
+  return play(voiceUrl(id), { ...opts, urls });
+}
+// What Mochi says, for speech bubbles: { ja, en }.
+export const line = (id) => LINES[id] || { ja: '', en: '' };
 // A sound the child asked for by tapping: right away.
 export const tapKana = (h) => sayKana(h, { interrupt: true });
 export const tapWord = (h) => sayWord(h, { interrupt: true });
 export const tapVocab = (id) => sayVocab(id, { interrupt: true });
 
-const PRAISE = ['sugoi', 'yattane', 'jouzu', 'iine', 'pittari'];
-export const praise = () => say(PRAISE[Math.floor(Math.random() * PRAISE.length)], { lead: LEAD });
+const PRAISE = ['sugoi', 'yattane', 'jouzu', 'iine'];
+// Says a random praise and returns its id, so the speech bubble can show the same words.
+export function praise() { const id = PRAISE[Math.floor(Math.random() * PRAISE.length)]; say(id, { lead: LEAD }); return id; }
 
 // ---- Synth sounds ----
 function tone(freq, start, dur, gain, type = 'sine') {

@@ -1,6 +1,6 @@
 // Sound Detective, Spot the Different One, Sushi Train, River Stepping Stones.
 // Layout is for the 1280x800 stage; animations use transform/opacity only.
-import { el, mochi, wait, speakerIcon, onTap } from '../ui.js';
+import { said, el, mochi, wait, speakerIcon, onTap } from '../ui.js';
 import * as A from '../audio.js';
 import { record, pickTargets, distractors, shuffle, lookalikePairs, mastery, playableWords } from '../learn.js';
 import { guard } from '../session.js';
@@ -63,7 +63,7 @@ export async function detective(s, { pool, boost = [], only = null, count = 5 })
       const v = s.view('detective',
         el('div', { class: 'det-left' },
           el('div', { class: 'det-card' }, el('span', { class: 'kana' }, h), el('span', { class: 'det-glass emoji' }, '🔍')),
-          el('div', { class: 'det-mochi' }, m, bubble('Which sound does it make? Listen, then pick!'))),
+          el('div', { class: 'det-mochi' }, m, bubble(said('dorenooto', 'Which sound does it make? Listen, then pick!')))),
         el('div', { class: `det-options n${options.length}` }, ...cards));
       v.dataset.target = h;
       v.dataset.options = options.join('');
@@ -75,21 +75,20 @@ export async function detective(s, { pool, boost = [], only = null, count = 5 })
 // ======================= Spot the Different One =======================
 export async function spot(s, { pool, boost = [], only = null, count = 5 }) {
   const p = s.p;
-  const pairs = shuffle(lookalikePairs(pool, only));
+  // Each round is built around one target (every chosen character gets its turn); the other
+  // character is a look-alike whenever there is one, which is what makes this game useful.
+  const seq = pickTargets(p, pool, count, boost, only);
   const sizes = [[3, 3], [4, 3], [5, 3], [6, 3], [6, 3]];
   for (let round = 0; round < count; round++) {
     guard(s);
-    let pair = pairs.length ? pairs[round % pairs.length] : null;
-    if (!pair) {
-      const a = pickTargets(p, pool, 1, boost, only)[0];
-      pair = [a, distractors(a, pool, 1, false)[0]];
-    }
-    const [same, odd] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
+    const a = seq[round % seq.length];
+    const pair = [a, distractors(a, pool, 1, true)[0]];
+    const [same, odd] = [pair[1], pair[0]];   // the target is the one to find
     const [cols, rows] = sizes[Math.min(round, sizes.length - 1)];
     const total = cols * rows;
     const oddAt = Math.floor(Math.random() * total);
     let firstTry = true;
-    const msg = bubble('Find the one that’s different!');
+    const msg = bubble(said('chigau', 'Find the one that’s different!'));
     await new Promise((done) => {
       const cells = Array.from({ length: total }, (_, i) => {
         const c = i === oddAt ? odd : same;
@@ -126,9 +125,20 @@ export async function spot(s, { pool, boost = [], only = null, count = 5 }) {
 
 // ======================= Sushi Train (回転寿司) =======================
 const CUSTOMERS = ['🧒', '👧', '👦', '👴', '👵', '👩', '👨', '🧑‍🍳'];
+// Always at least n rounds: when only a few words fit, reuse them in a shuffled order,
+// never the same word twice in a row (unless there is only one).
+function fillRounds(words, n) {
+  const out = [...words];
+  while (out.length < n && words.length) {
+    const next = shuffle(words).find((w) => w !== out[out.length - 1]) || words[0];
+    out.push(next);
+  }
+  return out;
+}
+
 export async function sushi(s, { pool, boost = [], only = null, count = 3 }) {
   const p = s.p;
-  const words = pickWords(p, pool, count, boost, { max: 4 }, only);
+  const words = fillRounds(pickWords(p, pool, count, boost, { max: 4 }, only), Math.max(3, count));
   const HALF = 8;           // plates per half of the belt (the belt is two identical halves)
   const belt = el('div', { class: 'belt-track' });
   const plates = [];        // [{ node, kana, i }] for both halves
@@ -167,7 +177,9 @@ export async function sushi(s, { pool, boost = [], only = null, count = 3 }) {
     shuffle([...need, ...fillers]).forEach((c, i) => setPlate(i, c));
   };
 
-  for (const w of words) {
+  const retried = new Set();
+  for (let wi = 0; wi < words.length; wi++) {
+    const w = words[wi];
     guard(s);
     cur = w;
     v.dataset.target = w.w;
@@ -212,6 +224,8 @@ export async function sushi(s, { pool, boost = [], only = null, count = 3 }) {
               A.say(Math.random() < 0.5 ? 'oishii' : 'arigatou', { gap: 600 });
               await wait(2000);
               customer.classList.remove('happy');
+              // A word that went wrong comes back once at the end, for a second try.
+              if (wordMisses && !retried.has(w.id)) { retried.add(w.id); words.push(w); }
               done();
             }
           } else {

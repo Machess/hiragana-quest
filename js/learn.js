@@ -144,6 +144,10 @@ export function newCharsForSession(p) {
 // Weighted pick of practice targets. `only` restricts targets (Dojo picks, single-character practice).
 export function pickTargets(p, pool, n, boost = [], only = null) {
   const cand = only && only.length ? only : pool;
+  // Chosen characters (Dojo picks, or a hand-picked list): every one comes up once, in a
+  // shuffled order, before any repeats. The list's order says which come first when not all fit.
+  const cover = only && only.length ? shuffle(only.slice(0, n)) : [];
+  if (cover.length >= n) return cover;
   const now = Date.now();
   const weights = cand.map((h) => {
     const c = p.chars[h] || { last: 0 };
@@ -152,9 +156,10 @@ export function pickTargets(p, pool, n, boost = [], only = null) {
     if (boost.includes(h)) w *= 2.5;
     return Math.max(w, 0.05);
   });
-  const out = [];
-  let last = null;
-  for (let k = 0; k < n; k++) {
+  const out = [...cover];
+  let last = cover.length ? cover[cover.length - 1] : null;
+  cover.forEach((h) => { weights[cand.indexOf(h)] *= 0.55; });
+  for (let k = cover.length; k < n; k++) {
     let total = 0;
     const ws = weights.map((w, j) => (cand[j] === last && cand.length > 1 ? 0 : w));
     ws.forEach((w) => (total += w));

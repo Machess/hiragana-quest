@@ -1,5 +1,5 @@
 // Core games: Meet, the writing pad (Trace / Copy / Write), Listen & Pick, Picture Write, Dictation.
-import { el, mochi, wait, speakerIcon, icon, onTap } from '../ui.js';
+import { said, el, mochi, wait, speakerIcon, icon, onTap } from '../ui.js';
 import * as A from '../audio.js';
 import { kana, record, introduce, pickTargets, distractors, shuffle, writingMode, stepOf, S } from '../learn.js';
 import { createTracePad, animatedKanaSVG, kanaSVG } from '../trace.js';
@@ -42,7 +42,7 @@ export async function meet(s, h) {
   onTap(word, () => A.tapWord(h));
   const go = el('button', { class: 'btn big' }, 'Let’s write it!');
   s.view('meet',
-    el('div', { class: 'meet-left' }, m, bubble('A new hiragana!')),
+    el('div', { class: 'meet-left' }, m, bubble(said('atarashii'))),
     el('div', { class: 'meet-mid' }, big,
       el('div', { class: 'meet-sound' }, speaker(() => A.tapKana(h), 'lg'),
         settings().romaji ? el('span', { class: 'romaji big' }, k.r) : null)),
@@ -121,8 +121,10 @@ export async function writeOne(s, h, { level, mode, title, cue = 'kana' }) {
     msg.classList.add('jp');
     await A.sayWord(h, { lead: 500 });
   } else {
-    msg.textContent = r.quality > 0.6 && !r.misses ? 'Beautiful!' : 'Well done!';
-    if (r.quality > 0.65 && !r.misses) A.say('pittari', { lead: 400 }); else A.praise();
+    // The bubble shows exactly what Mochi says: neat writing gets きれい！ Beautiful!
+    let id = !r.misses && r.quality > 0.85 ? 'pittari' : !r.misses && r.quality > 0.6 ? 'kirei' : null;
+    if (id) A.say(id, { lead: 400 }); else id = A.praise();
+    msg.replaceChildren(...said(id));
   }
   await wait(1700);
   return r;
@@ -132,7 +134,8 @@ export async function writeOne(s, h, { level, mode, title, cue = 'kana' }) {
 export async function trace(s, { pool, boost = [], only = null, count = 3 }) {
   const p = s.p;
   const cand = only && only.length ? only : pool;
-  const order = [...cand].sort((a, b) => stepOf(p, a) - stepOf(p, b));
+  // Chosen characters (Dojo): all of them, shuffled. Otherwise the least-practised first.
+  const order = only && only.length ? shuffle([...cand]) : [...cand].sort((a, b) => stepOf(p, a) - stepOf(p, b));
   const targets = [...new Set([...boost.filter((h) => cand.includes(h)), ...order])].slice(0, count);
   for (const h of targets) {
     guard(s);

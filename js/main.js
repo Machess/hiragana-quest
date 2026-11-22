@@ -1,4 +1,4 @@
-import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake, speakerIcon, setLook, kobanPill, kobanSVG, overlay } from './ui.js';
+import { el, mochi, wait, icon, holdButton, trophySVG, lanternSVG, petals, onTap, keepAwake, speakerIcon, setLook, kobanPill, kobanSVG, overlay, said, toast } from './ui.js';
 import * as W from './wardrobe.js';
 import * as A from './audio.js';
 import * as S from './store.js';
@@ -58,7 +58,7 @@ function showProfiles() {
     const t = el('button', { class: 'profile-tile', style: { '--c': p.color } },
       el('span', { class: 'avatar' }, p.avatar, mochi('happy', 'xs', W.lookOf(p))), el('span', { class: 'pname' }, p.name),
       el('span', { class: 'pmeta' }, `${introduced(p).length} hiragana`));
-    t.addEventListener('click', () => { A.unlockAudio(); profile = p; setLook(W.lookOf(p)); S.setLastProfile(p.id); showHome(true); });
+    t.addEventListener('click', () => { A.unlockAudio(); profile = p; A.setEchoProfile(p); setLook(W.lookOf(p)); S.setLastProfile(p.id); showHome(true); });
     list.append(t);
   }
   const add = el('button', { class: 'profile-tile add' }, el('span', { class: 'avatar' }, '＋'), el('span', { class: 'pname' }, 'New player'));
@@ -92,7 +92,7 @@ function showNewProfile() {
   const create = el('button', { class: 'btn big' }, 'Start!');
   create.onclick = () => {
     if (!name.value.trim()) { name.focus(); name.classList.add('need'); return; }
-    profile = S.createProfile(name.value, avatar, color);
+    profile = S.createProfile(name.value, avatar, color); A.setEchoProfile(profile);
     setLook(W.lookOf(profile));
     S.setLastProfile(profile.id);
     A.unlockAudio();
@@ -143,7 +143,7 @@ function showHome(greet = false) {
     el('div', { class: 'topline' }, backBtn(showProfiles, 'Change player'),
       el('div', { class: 'who', style: { '--c': p.color } }, el('span', { class: 'avatar' }, p.avatar), p.name)),
     el('div', { class: 'home-body' },
-      el('div', { class: 'home-mochi' }, m, el('div', { class: 'bubble' }, greeting)),
+      el('div', { class: 'home-mochi' }, m, el('div', { class: 'bubble' }, ...(greet ? said('konnichiwa', greeting) : [greeting]))),
       el('div', { class: 'home-actions' }, adv, adventurePreview(p),
         el('div', { class: 'home-tiles' },
           tile('Dojo', '🥋', showDojo, n < 1 && !S.settings().openAll),
@@ -249,7 +249,7 @@ async function trophyCeremony({ earned, rows }) {
   if (earned.length || rows.length) {
     const shelf = el('div', { class: 'ceremony-shelf' });
     const v = screen('ceremony',
-      el('h2', {}, 'New trophies!'),
+      el('h2', { class: 'said' }, ...said('trophy', 'New trophies!')),
       shelf,
       el('div', { class: 'center' }, mochi('happy', 'md')));
     A.say('trophy', { lead: 300 });
@@ -277,7 +277,7 @@ async function stampEnd(s) {
   const m = mochi('sleepy', 'md');
   const done = el('button', { class: 'btn big' }, 'Done');
   screen('stamp-end',
-    el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, `Great work today! You got ${s.correctCount} right`,
+    el('div', { class: 'stamp-end-top' }, m, el('div', { class: 'bubble' }, el('span', { class: 'said-ja kana' }, A.line('ganbatta').ja), `Great work today! You got ${s.correctCount} right`,
       s.coinsEarned ? el('span', { class: 'earned' }, ' and earned ', kobanPill(s.coinsEarned)) : '', '.')),
     card,
     el('div', { class: 'center' }, done));
@@ -468,16 +468,27 @@ function showDojo() {
   refresh();
 }
 
+// Games that ask about one character per round: in the Dojo they grow to cover every chosen one.
+const PER_CHAR = new Set(['trace', 'listen', 'goldfish', 'detective', 'spot', 'picwrite', 'dictation']);
+const DOJO_MAX = 12;
+// Which chosen characters the last Dojo game showed, so "Again!" starts with the others.
+let dojoLast = { key: '', shown: new Set() };
+
 // Run one Dojo game (or a short mix) on the chosen characters.
-async function runDojo(type, sel, back) {
+async function runDojo(type, chosen, back) {
   const p = profile;
+  const key = [...chosen].sort().join('');
+  const seen = dojoLast.key === key ? dojoLast.shown : new Set();
+  const shuffled = (a) => a.map((x) => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+  // Not-yet-shown first, each group shuffled: across "Again!" rounds every chosen one comes up.
+  const sel = [...shuffled(chosen.filter((h) => !seen.has(h))), ...shuffled(chosen.filter((h) => seen.has(h)))];
   const pool = dojoPool(p, sel);
   A.preloadChars(pool);
   const steps = [];
   // With "Open all hiragana", a character that hasn't been met yet is met first.
   sel.filter((h) => !isIntroduced(p, h)).slice(0, 3).forEach((h) => steps.push({ type: 'meet', h }));
   if (type === 'mixed') steps.push(...mixFor(p, pool, sel));
-  else steps.push({ type, only: sel, count: (COUNTS[type] || 6) });
+  else steps.push({ type, only: sel, count: PER_CHAR.has(type) ? Math.min(DOJO_MAX, Math.max(COUNTS[type] || 6, sel.length)) : (COUNTS[type] || 6) });
   const s = new Session({ profile: p, root: app, steps: steps.length, onExit: back });
   try {
     for (const st of steps) {
@@ -491,9 +502,11 @@ async function runDojo(type, sel, back) {
     throw e;
   }
   s.end();
+  const shown = new Set([...seen, ...Object.keys(s.practiced).filter((h) => chosen.includes(h))]);
+  dojoLast = { key, shown: shown.size >= chosen.length ? new Set() : shown };
   await stepsSummary(s.climbed);
   await trophyCeremony(updateTrophies(p));
-  dojoEnd(type, sel, back);
+  dojoEnd(type, chosen, back);
 }
 
 // A short mix that fits where the chosen characters are on their paths.
@@ -501,10 +514,14 @@ function mixFor(p, pool, sel) {
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const lo = Math.min(...sel.map((h) => (isIntroduced(p, h) ? stepOf(p, h) : 1)));
   const out = [];
-  if (lo <= L.S.copy) out.push({ type: 'trace', only: sel, count: Math.min(3, sel.length + 1) });
-  if (pool.length >= 2) out.push({ type: pick(['listen', 'goldfish']), only: sel, count: 4 });
-  if (pool.length >= 2) out.push({ type: pick(['detective', 'spot']), only: sel, count: 4 });
-  if (lo > L.S.copy) out.push({ type: pick(['picwrite', 'dictation']), only: sel, count: 2 });
+  // Each game in the mix starts further along the chosen list, so together they cover all of it.
+  let at = 0;
+  const slice = (n) => { const r = [...sel.slice(at), ...sel.slice(0, at)]; at = (at + n) % Math.max(1, sel.length); return r; };
+  const many = Math.min(8, Math.max(4, Math.ceil(sel.length / 2)));
+  if (lo <= L.S.copy) out.push({ type: 'trace', only: slice(3), count: Math.min(3, sel.length + 1) });
+  if (pool.length >= 2) out.push({ type: pick(['listen', 'goldfish']), only: slice(many), count: many });
+  if (pool.length >= 2) out.push({ type: pick(['detective', 'spot']), only: slice(many), count: many });
+  if (lo > L.S.copy) out.push({ type: pick(['picwrite', 'dictation']), only: slice(2), count: 2 });
   if (wordsFor(pool, sel).length) out.push({ type: pick(['readmatch', 'sushi']), only: sel, count: 3 });
   if (!out.length) out.push({ type: 'trace', only: sel, count: 2 });
   return out.slice(0, 4);
@@ -515,7 +532,7 @@ function dojoEnd(type, sel, back) {
   again.onclick = () => runDojo(type, sel, back);
   const other = el('button', { class: 'btn soft' }, 'Back');
   other.onclick = back;
-  screen('dojo-end', mochi('happy', 'lg'), el('div', { class: 'bubble' }, 'Nice practice!'),
+  screen('dojo-end', mochi('happy', 'lg'), el('div', { class: 'bubble' }, ...said('yokudekimashita', 'Nice practice!')),
     el('div', { class: 'row-btns center' }, other, again));
   A.say('yokudekimashita', { lead: 300 });
 }
@@ -595,7 +612,7 @@ function showDressingRoom(startCat = 'color', startId) {
         wearBtn.onclick = () => {
           if (it) W.wear(p, it.id); else W.takeOff(p, cat);
           setLook(W.lookOf(p));
-          stageMochi.react(); A.say('niau', { interrupt: true });
+          stageMochi.react(); A.say('niau', { interrupt: true }); toast(el('span', {}, ...said('niau')), 1800);
           render();
         };
         actions.append(wearBtn);
@@ -627,7 +644,7 @@ function showDressingRoom(startCat = 'color', startId) {
           if (!W.buy(p, it.id)) return;
           setLook(W.lookOf(p));
           A.clink(); A.chime(1); petals(16, it.cat === 'celebration' ? it.id : null);
-          stageMochi.react(); A.say('kawaii', { interrupt: true });
+          stageMochi.react(); A.say('kawaii', { interrupt: true }); toast(el('span', {}, ...said('kawaii')), 1800);
           render();
         } }, 'Buy!'))));
     overlay().append(box);
@@ -714,6 +731,19 @@ function showStamps() {
 }
 
 // ================= Parent area =================
+// Mochi speaks Japanese, then the same in English while the child is still learning the phrase.
+function echoSetting(st) {
+  const opts = [['fade', 'Fade out as they learn (English stops once a phrase is familiar)'], ['always', 'Always'], ['off', 'Off (Japanese only)']];
+  const cur = st.echo || 'fade';
+  return el('div', { class: 'echo-set' }, el('div', { class: 'echo-title' }, 'Mochi says it in English too'),
+    ...opts.map(([v, label]) => {
+      const r = el('input', { type: 'radio', name: 'echo', value: v });
+      r.checked = cur === v;
+      r.onchange = () => { S.setSetting('echo', v); if (v !== 'off') A.say('sugoi', { interrupt: true }); };
+      return el('label', { class: 'toggle' }, r, label);
+    }));
+}
+
 function showParent() {
   const st = S.settings();
   const vol = el('input', { type: 'range', min: 0, max: 1, step: 0.05, value: st.volume });
@@ -748,6 +778,7 @@ function showParent() {
     el('div', { class: 'topline' }, backBtn(showProfiles), el('h2', {}, 'Grown-ups')),
     el('section', { class: 'card-sec' }, el('h3', {}, 'Settings'),
       el('label', { class: 'slider' }, 'Volume', vol),
+      echoSetting(st),
       toggle('romaji', 'Show romaji hints to kids'),
       toggle('openAll', 'Open all hiragana in the Dojo (for kids who already know some)'),
       toggle('reducedMotion', 'Calmer animations')),
@@ -782,7 +813,7 @@ async function boot() {
   await U.initUpdates();
   await U.startupCheck(); // a new version restarts the page here
   const last = S.getState().lastProfileId && S.getProfile(S.getState().lastProfileId);
-  if (last) { profile = last; setLook(W.lookOf(last)); showHome(); } else showProfiles();
+  if (last) { profile = last; A.setEchoProfile(last); setLook(W.lookOf(last)); showHome(); } else showProfiles();
   U.welcomeNewVersion();
 }
 boot();

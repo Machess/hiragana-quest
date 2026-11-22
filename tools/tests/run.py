@@ -181,4 +181,4 @@ async def main(mode):
         print(f"speech clips {len(log)}, overlapping pairs {overl}, shortest gaps ms {[round(g) for g in gaps[:5]]}, median gap {round(gaps[len(gaps)//2]) if gaps else None}")
         await b.close()
     print('ERRORS:', *errors[:30], sep='\n')
-asyncio.run(main(sys.argv[1] if len(sys.argv)>1 else '1'))
+if __name__ == "__main__": asyncio.run(main(sys.argv[1] if len(sys.argv)>1 else "1"))
