@@ -5,31 +5,29 @@
 import { el, mochi, wait, said, petals, kobanPill } from '../ui.js';
 import * as A from '../audio.js';
 import * as S from '../store.js';
-import { KANA } from '../data.js';
 import { currentUnit, record, shuffle } from '../learn.js';
-import { Session, ExitError } from '../session.js';
-import { addCoins, balance } from '../wardrobe.js';
+import { balance } from '../wardrobe.js';
 import { memberSVG, townSVG } from './art.js';
+import { BASIC, quiet, topic, bubbleLine, replayBtn, shake, lessonList } from './common.js';
+import { showStreets } from './directions.js';
 
-const BASIC = new Set(KANA.map((k) => k.h));
 const ROLES = ['ojiisan', 'obaasan', 'otousan', 'okaasan', 'oniisan', 'oneesan', 'watashi', 'otouto', 'imouto'];
 const word = (role) => A.line(`f_${role}`);
 const readable = (role) => [...word(role).ja].every((c) => BASIC.has(c));
-const voice = (id) => `audio/voice/${id}.mp3`;
 const sayWord = (role, o) => A.say(`f_${role}`, o);
-const quiet = (id) => A.play(voice(id), { interrupt: true });   // one word, no English echo
 
 // ---------------- Opening rules ----------------
 export const townOpen = (p) => S.settings().openAll || !currentUnit(p);
 const isToday = (t) => new Date(t).toDateString() === new Date().toDateString();
 export const adventureDoneToday = (p) => (p.stamps || []).some((s) => isToday(s.date));
 export const townReadyNow = (p) => townOpen(p) && (S.settings().townFirst === false || S.settings().openAll || adventureDoneToday(p));
-const fam = (p) => { p.town = p.town || {}; return (p.town.family = p.town.family || { done: [] }); };
+const fam = (p) => topic(p, 'family');
 
 // ---------------- Town map ----------------
 // ctx: { profile, screen, backBtn, showHome }
 export function showTown(ctx) {
   const p = ctx.profile;
+  ctx.showTown = () => showTown(ctx);
   const m = mochi('happy', 'md');
   const spot = (cls, label, sub, open, fn) => {
     const b = el('button', { class: `town-spot ${cls}` + (open ? '' : ' closed') }, el('span', { class: 'spot-name' }, label), el('span', { class: 'spot-sub' }, sub));
@@ -40,9 +38,9 @@ export function showTown(ctx) {
     el('div', { class: 'topline' }, ctx.backBtn(ctx.showHome, 'Home'), el('h2', {}, 'Mochi’s Town ', el('span', { class: 'kana' }, 'まち')),
       kobanPill(balance(p))),
     el('div', { class: 'town-map' },
-      el('div', { class: 'town-art', html: townSVG({ directions: false, food: false }) }),
+      el('div', { class: 'town-art', html: townSVG({ directions: true, food: false }) }),
       spot('s-house', 'Mochi’s house', 'かぞく · family', true, () => showFamily(ctx)),
-      spot('s-streets', 'The streets', 'みち · coming soon', false),
+      spot('s-streets', 'The streets', 'みち · directions', true, () => showStreets(ctx)),
       spot('s-food', 'Food shop', 'たべもの · coming soon', false),
       el('div', { class: 'town-mochi' }, m, el('div', { class: 'bubble' }, ...said('fi_machi')))));
   A.say('fi_machi', { lead: 400 });
@@ -85,11 +83,9 @@ function tapNode(t, keys) {
     });
   });
 }
+const FAMILY_DEF = { key: 'family', back: (ctx) => showFamily(ctx), allDone: 'All family lessons done! Mochi’s house is yours.' };
 const happy = async (node) => { node.mood('happy'); node.el.classList.add('hop'); await wait(900); node.el.classList.remove('hop'); node.mood('idle'); };
-const shake = (n) => { n.classList.remove('shake'); void n.offsetWidth; n.classList.add('shake'); };
 const readCredit = (p, role) => [...word(role).ja].forEach((h) => BASIC.has(h) && record(p, h, 'use', true, 0.05));
-function bubbleLine(id, rest) { return el('div', { class: 'bubble town-bubble' }, ...said(id, rest)); }
-function replayBtn(fn) { const b = el('button', { class: 'icon-btn replay', 'aria-label': 'Hear it again' }, '🔊'); b.onclick = fn; return b; }
 
 // ---------------- The lessons ----------------
 const LESSONS = [
@@ -409,18 +405,8 @@ export async function presentFamily(p, show) {
 export function showFamily(ctx) {
   const p = ctx.profile;
   const f = fam(p);
-  const next = LESSONS.findIndex((l) => !f.done.includes(l.id));
   const t = tree(MOCHI_FAMILY, { look: p.look, small: true, labels: f.done.includes('meet') ? Object.fromEntries(ROLES.map((r) => [r, 1])) : {} });
-  const list = el('div', { class: 'lesson-list' }, ...LESSONS.map((l, i) => {
-    const done = f.done.includes(l.id);
-    const open = done || i === next || S.settings().openAll;
-    const b = el('button', { class: 'lesson' + (done ? ' done' : '') + (i === next ? ' next' : '') + (open ? '' : ' locked'), disabled: !open },
-      el('span', { class: 'lesson-icon' }, open ? l.icon : '🔒'),
-      el('span', { class: 'lesson-text' }, el('b', {}, `${i + 1}. ${l.name}`), el('small', {}, l.what)),
-      el('span', { class: 'lesson-mark' }, done ? '✓' : ''));
-    b.onclick = () => runLesson(ctx, l);
-    return b;
-  }));
+  const list = lessonList(ctx, { ...FAMILY_DEF, lessons: LESSONS });
   const mine = f.my ? el('button', { class: 'btn soft' }, '🏠 Show my family') : null;
   if (mine) mine.onclick = async () => {
     const back = el('button', { class: 'btn big' }, 'Back');
@@ -431,34 +417,4 @@ export function showFamily(ctx) {
   ctx.screen('town-family',
     el('div', { class: 'topline' }, ctx.backBtn(() => showTown(ctx), 'Town'), el('h2', {}, 'Mochi’s house ', el('span', { class: 'kana' }, 'かぞく'))),
     el('div', { class: 'family-body' }, el('div', { class: 'family-left' }, t.root, mine), list));
-}
-
-async function runLesson(ctx, lesson) {
-  const p = ctx.profile;
-  const f = fam(p);
-  const s = new Session({ profile: p, root: ctx.app, steps: 1, onExit: () => showFamily(ctx) });
-  try {
-    await lesson.fn(s);
-    await s.calm(900);
-  } catch (e) {
-    if (e instanceof ExitError) return;
-    throw e;
-  }
-  const first = !f.done.includes(lesson.id);
-  if (first) f.done.push(lesson.id);
-  s.earned(addCoins(p, first ? 3 : 1));
-  S.save();
-  s.end();
-  const i = LESSONS.indexOf(lesson);
-  const nextL = LESSONS[i + 1];
-  const m = mochi('happy', 'lg');
-  const go = A.afterSpeech(el('button', { class: 'btn big' }, 'Next'));
-  ctx.screen('town-done',
-    el('div', { class: 'check-side' }, m, el('div', { class: 'bubble' }, ...said('yattane',
-      nextL ? `Lesson done! Next: ${nextL.name}` : 'All family lessons done! Mochi’s house is yours.'))),
-    s.coinsEarned ? el('div', { class: 'center' }, 'You earned ', kobanPill(s.coinsEarned)) : null,
-    el('div', { class: 'center' }, go));
-  A.chime(2); petals(16); m.hop();
-  A.say('yattane', { lead: 500 });
-  go.onclick = () => showFamily(ctx);
 }

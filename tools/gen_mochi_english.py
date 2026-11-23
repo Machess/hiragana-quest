@@ -44,10 +44,10 @@ def finish(wav, out):
 
 base = json.load(open('/home/claude/tools/mochi_lines.json'))
 # Mochi's Town: every line is new (Japanese and English made here). Chunks have no English audio.
-town = [dict(L, new=True) for L in json.load(open('/home/claude/tools/town_family.json'))]
+town = [dict(L, new=True) for f in ('town_family', 'town_directions') for L in json.load(open(f'/home/claude/tools/{f}.json'))]
 lines = base + town
 arg = sys.argv[1] if len(sys.argv) > 1 else ''
-only = {L['id'] for L in town} if arg == 'town' else (set(arg.split(',')) if arg else None)
+only = {L['id'] for L in town} if arg == 'town' else ({L['id'] for L in town if L['id'][0] == 'd'} if arg == 'directions' else (set(arg.split(',')) if arg else None))
 os.makedirs(f'{OUT}/en', exist_ok=True)
 for L in lines:
     if only and L['id'] not in only: continue

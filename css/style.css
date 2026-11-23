@@ -825,3 +825,43 @@ h2.said .said-en { font-size: 1em; color: inherit; font-weight: 800; }
 .mine-name .kana { font-size: 22px; }
 .mine-right { width: 660px; }
 .family-tree:not(.compact):not(.small) .member-label { height: 54px; min-height: 0; box-sizing: border-box; }
+
+/* ---- The streets (directions) ---- */
+.street-row { display: flex; gap: 18px; align-items: center; }
+.street-map { position: relative; width: 1000px; height: 500px; flex: none; }
+.view.town-lesson .street-map { width: 1000px; height: 500px; }
+.street-art, .street-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.place-btn { position: absolute; width: 110px; height: 90px; background: none; border: none; border-radius: 18px; padding: 0; display: flex; align-items: flex-end; justify-content: center; }
+.place-btn.bridge { width: 80px; height: 80px; }
+.place-btn.glow { background: radial-gradient(circle, rgba(255, 209, 102, .7), rgba(255, 209, 102, 0) 70%); animation: pulse 1.4s ease-in-out infinite; }
+.place-label { background: #fffdf7; border-radius: 10px; padding: 0 8px; font-size: 20px; box-shadow: var(--shadow); color: var(--ink); transform: translateY(14px); }
+.street-map.no-labels .place-label { visibility: hidden; }
+.walker { position: absolute; left: 0; top: 0; width: 80px; height: 80px; transition: transform .6s ease; z-index: 3; pointer-events: none; }
+.walker.jump-to { transition: none; }
+.walker-body { position: absolute; inset: 6px; }
+.walker-body svg { width: 100%; height: 100%; }
+.walker-body.hop { animation: hop .45s ease; }
+.walker-arrow { position: absolute; left: 50%; top: -20px; margin-left: -12px; width: 24px; text-align: center; font-size: 22px; color: var(--red); transition: transform .4s ease; transform-origin: 12px 60px; }
+.walker-hints { position: absolute; inset: 0; opacity: 0; transition: transform .4s ease, opacity .3s; }
+.walker-hints.on { opacity: 1; }
+.walker-hints span { position: absolute; top: 26px; font-size: 16px; background: #fffdf7; border-radius: 8px; padding: 1px 6px; box-shadow: var(--shadow); color: var(--ink); transition: transform .4s ease; }
+.walker-hints .hint-l { right: 78px; }
+.walker-hints .hint-r { left: 78px; }
+.dir-pad { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.dir-btn { width: 110px; height: 96px; border-radius: 22px; border: none; background: var(--card); box-shadow: var(--shadow); font-size: 48px; color: var(--ink); }
+.dir-btn.d-S { font-size: 40px; }
+.dir-btn.shake { animation: shake .4s ease; }
+.crossroads { position: relative; width: 520px; height: 360px; flex: none; }
+.cross-art, .cross-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cross-mochi { position: absolute; left: 220px; top: 140px; width: 80px; height: 80px; transition: transform .6s ease; }
+.word-card.dir-word { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 150px; min-height: 96px; }
+.dw-icon { font-size: 30px; line-height: 1; }
+.read-big { font-size: 34px !important; }
+.map-preview { width: 640px; height: 320px; overflow: hidden; border-radius: 20px; }
+.map-preview .street-map { transform: scale(0.64); transform-origin: 0 0; pointer-events: none; }
+.screen.town-streets .lesson-list { width: 470px; }
+.view.town-lesson .street-map ~ .dir-pad { margin-top: 0; }
+.walker-hints span { white-space: nowrap; }
+.street-map.ask .place-btn:not(.bridge) .place-label { animation: pulse 1.6s ease-in-out infinite; }
+.place-label { white-space: nowrap; }
+.place-btn { overflow: visible; }

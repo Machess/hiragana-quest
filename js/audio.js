@@ -86,7 +86,7 @@ async function pump() {
     if (pause > 0) await new Promise((r) => setTimeout(r, pause));
     for (let i = 0; i < bufs.length; i++) {
       if (item.cancelled) break;
-      if (i > 0) await new Promise((r) => setTimeout(r, ECHO_GAP));   // short breath before the English
+      if (i > 0) await new Promise((r) => setTimeout(r, item.between ?? ECHO_GAP));   // a breath between clips (e.g. before the English)
       if (item.cancelled) break;
       if (bufs[i]) await startClip(bufs[i]);
     }
@@ -114,7 +114,7 @@ export function afterSpeech(btn, extra = 500) {
 
 // Play a speech clip. Returns a promise that resolves when it has finished.
 // interrupt: stop whatever is speaking and play now (for taps on a speaker button).
-export function play(url, { interrupt = false, gap = GAP, lead = 0, urls = null } = {}) {
+export function play(url, { interrupt = false, gap = GAP, lead = 0, urls = null, between = ECHO_GAP } = {}) {
   if (interrupt) {
     queue.forEach((q) => { q.cancelled = true; q.resolve(); });
     queue = [];
@@ -124,7 +124,7 @@ export function play(url, { interrupt = false, gap = GAP, lead = 0, urls = null 
   }
   // Never let a backlog build up: keep at most two waiting clips.
   while (queue.length >= 2) { const old = queue.shift(); old.cancelled = true; old.resolve(); }
-  return new Promise((resolve) => { queue.push({ url, urls, gap, lead, resolve }); pump(); });
+  return new Promise((resolve) => { queue.push({ url, urls, gap, lead, between, resolve }); pump(); });
 }
 export const isSpeaking = () => playing;
 
