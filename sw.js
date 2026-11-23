@@ -6,7 +6,7 @@
 //   hand out an old copy of a changed file.
 // - All or nothing: if any file fails, the update is dropped and the current version stays.
 // - A new version waits until the app says it's a calm moment (message 'apply').
-const VERSION = 'hq-7b2107b6bb';
+const VERSION = 'hq-71edce4c83';
 const FILES = {
  "./": "1fbbe6265939",
  "audio/kana/a.mp3": "71bcedf81df8",
@@ -50,8 +50,8 @@ const FILES = {
  "audio/kana/to.mp3": "99da55b76928",
  "audio/kana/tsu.mp3": "85fdefeb5997",
  "audio/kana/u.mp3": "f2b5ea694136",
- "audio/kana/wa.mp3": "515044671476",
- "audio/kana/wo.mp3": "5c711a15839c",
+ "audio/kana/wa.mp3": "1bebfa190df3",
+ "audio/kana/wo.mp3": "6d50f3058ad5",
  "audio/kana/ya.mp3": "aebd184dcfa4",
  "audio/kana/yo.mp3": "2a3d99de77ac",
  "audio/kana/yu.mp3": "818faeb92ac4",
@@ -288,7 +288,7 @@ const FILES = {
  "js/vocab.js": "bae813648a8c",
  "js/wardrobe.js": "8f25a5613bfc",
  "manifest.webmanifest": "749296ead23e",
- "version.json": "fe1ed03f65de"
+ "version.json": "d84ce4d63e47"
 };
 const META = 'hq-meta.json';
 

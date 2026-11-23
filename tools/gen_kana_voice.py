@@ -13,8 +13,8 @@ exec(src[:src.index('def clean(')])            # engine setup + stat()
 STYLE, SPEED, PRE, POST = 8, 0.95, 0.10, 0.12
 SR, HOP, FPS = 24000, 256, 24000 / 256
 VOWEL = 0.30                                     # seconds of vowel in the query
-BOOST = {'k': 6.0, 't': 6.0, 'h': 6.0, 'f': 6.0, 'r': 4.0}  # dB on the consonant
-MIN_CONS = {'k': 0.06, 't': 0.05, 'r': 0.055}   # r: the tongue tap was ~20 ms and vanished (り sounded like い)
+BOOST = {'k': 6.0, 't': 6.0, 'h': 6.0, 'f': 6.0, 'r': 4.0, 'w': 3.0}  # dB on the consonant
+MIN_CONS = {'k': 0.06, 't': 0.05, 'r': 0.055, 'w': 0.07}  # w: was 11 ms, わ sounded like あ   # r: the tongue tap was ~20 ms and vanished (り sounded like い)
 EXTRA = {'コ': 4.0}                              # こ's k sits low before o: a bit more
 OUT = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/hiragana-quest/audio/kana'
 
