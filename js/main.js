@@ -10,6 +10,7 @@ import {
 } from './learn.js';
 import { Session, ExitError, planAdventure, planLevel, finishSession } from './session.js';
 import { levelCheck } from './games/check.js';
+import { showTown, townOpen, townReadyNow } from './town/town.js';
 import { meet, trace, listen, picwrite, dictation, writeOne } from './games/core.js';
 import { goldfish, memory, karuta } from './games/extra.js';
 import { detective, spot, sushi, river, readmatch } from './games/more.js';
@@ -119,6 +120,22 @@ function rowStrip(p) {
   }));
 }
 
+// Mochi's Town: opens when all 46 hiragana are gold; each day after that day's adventure.
+const townCtx = () => ({ profile, app, screen, backBtn, showHome });
+function townTile(p) {
+  const open = townOpen(p);
+  const b = el('button', { class: 'home-tile town-tile' + (open ? '' : ' locked') },
+    el('span', { class: 'emoji' }, open ? '🏘️' : '🔒'), 'Town');
+  b.onclick = () => {
+    if (townReadyNow(p)) { showTown(townCtx()); return; }
+    A.tok();
+    const msg = open ? 'The town opens after today’s Adventure!' : 'Mochi’s Town opens when all 46 hiragana are gold!';
+    const bub = app.querySelector('.home-mochi .bubble');
+    if (bub) bub.replaceChildren(msg);
+  };
+  return b;
+}
+
 // What the next adventure is about: the current pair and its level, and the pairs of this row.
 function adventurePreview(p) {
   const u = L.currentUnit(p);
@@ -161,7 +178,8 @@ function showHome(greet = false) {
           tile('My Hiragana', 'あ', showChart),
           tile('Dressing Room', '👘', () => showDressingRoom()),
           tile('Trophies', '🏆', showTrophies),
-          tile('Stamps', '🔴', showStamps)))),
+          tile('Stamps', '🔴', showStamps),
+          townTile(p)))),
     rowStrip(p),
   );
   app.querySelector('.topline').append(kobanPill(W.balance(p), 'home'));
@@ -824,7 +842,8 @@ function showParent() {
       el('label', { class: 'slider' }, 'Volume', vol),
       echoSetting(st),
       toggle('romaji', 'Show romaji hints to kids'),
-      toggle('openAll', 'Open all hiragana in the Dojo (for kids who already know some)'),
+      toggle('townFirst', 'Mochi’s Town opens only after that day’s Adventure'),
+      toggle('openAll', 'Open everything: all hiragana in the Dojo, and Mochi’s Town (for kids who already know hiragana)'),
       toggle('reducedMotion', 'Calmer animations')),
     el('section', { class: 'card-sec' }, el('h3', {}, 'Players'), plist),
     versionSection(),

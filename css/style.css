@@ -723,3 +723,105 @@ h2.said .said-en { font-size: 1em; color: inherit; font-weight: 800; }
 .check-trophies .cer-item { width: 150px; }
 /* A button waiting for Mochi to finish talking */
 .btn.waiting { opacity: 0.45; filter: saturate(0.6); }
+
+/* =================== Mochi's Town =================== */
+.home-tile.town-tile.locked { opacity: 0.55; }
+.screen.town, .screen.town-family, .screen.town-done, .screen.town-show { display: flex; flex-direction: column; gap: 12px; padding: 18px 50px; }
+.screen.town .topline h2, .screen.town-family .topline h2 { margin: 0; font-size: 32px; flex: 1; }
+.town-map { position: relative; width: 1180px; height: 470px; margin: 6px auto 0; }
+.town-art, .town-art svg { width: 100%; height: 100%; display: block; }
+.town-spot { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 200px; min-height: 64px;
+  padding: 10px 18px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); font: inherit; color: var(--ink); border: 3px solid var(--red); }
+.town-spot .spot-name { font-size: 24px; font-weight: 800; }
+.town-spot .spot-sub { font-size: 18px; color: var(--ink-soft); font-family: var(--kana); }
+.town-spot.closed { border-color: transparent; opacity: 0.8; }
+.town-spot.s-house { left: 130px; top: 90px; }
+.town-spot.s-streets { left: 490px; top: 60px; }
+.town-spot.s-food { left: 850px; top: 60px; }
+.town-mochi { position: absolute; left: 400px; bottom: -20px; display: flex; align-items: flex-end; gap: 10px; }
+.town-mochi .mochi { width: 120px; height: 120px; }
+
+/* family house */
+.family-body { display: flex; gap: 28px; align-items: flex-start; justify-content: center; }
+.family-left { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lesson-list { display: flex; flex-direction: column; gap: 10px; width: 470px; }
+.lesson { display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 8px 16px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); border: 3px solid transparent; font: inherit; color: var(--ink); text-align: left; }
+.lesson.next { border-color: var(--red); }
+.lesson.locked { opacity: 0.5; }
+.lesson-icon { font-size: 32px; width: 44px; text-align: center; }
+.lesson-text { display: flex; flex-direction: column; flex: 1; }
+.lesson-text b { font-size: 22px; }
+.lesson-text small { font-size: 18px; color: var(--ink-soft); }
+.lesson-mark { font-size: 30px; color: #4f9d69; font-weight: 800; width: 30px; }
+
+/* family tree */
+.family-tree { position: relative; display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 10px 20px 6px; }
+.family-tree .tree-bg { position: absolute; inset: 0; z-index: 0; }
+.family-tree .tree-bg svg { width: 100%; height: 100%; }
+.tree-row { position: relative; z-index: 1; display: flex; gap: 6px; justify-content: center; }
+.member { width: var(--w); display: flex; flex-direction: column; align-items: center; gap: 0; background: none; border: none; padding: 0; font: inherit; color: var(--ink); border-radius: 18px; }
+.member-pic { width: calc(var(--w) * 0.8); height: calc(var(--w) * 0.8); }
+.member-pic svg { width: 100%; height: 100%; }
+.member-label { min-height: 44px; min-width: 70%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 2px 8px; }
+.member-label.on { background: #fffdf7; box-shadow: var(--shadow); }
+.member-label .kana { font-size: 22px; line-height: 1.1; }
+.member-label small { font-size: 15px; color: var(--ink-soft); }
+.member-label.slot { border: 3px dashed #cdbf9f; }
+.family-tree.small .member-label { min-height: 36px; }
+.family-tree.small .member-label .kana { font-size: 18px; }
+.family-tree.small .member-label small { display: none; }
+.member.glow { background: radial-gradient(circle at 50% 40%, rgba(255, 209, 102, 0.75), rgba(255, 209, 102, 0) 70%); animation: pulse 1.4s ease-in-out infinite; }
+.member.hop .member-pic { animation: hop .6s ease; }
+.member.shake, .word-card.shake, .town-spot.shake { animation: shake .4s ease; }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+
+/* lessons */
+.view.town-lesson { flex-direction: column; gap: 8px; justify-content: flex-start; padding-top: 4px; }
+.town-top { display: flex; align-items: center; gap: 14px; }
+.town-bubble { max-width: 900px; text-align: center; }
+.icon-btn.replay { font-size: 30px; width: 64px; height: 64px; }
+.word-tray { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; min-height: 76px; }
+.word-card { min-width: 150px; min-height: 72px; padding: 0 22px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); font-size: 34px; color: var(--ink); border: 3px solid transparent; }
+.word-card.tile { min-width: 110px; font-size: 30px; }
+.word-card.picked { border-color: var(--red); transform: translateY(-6px); }
+.word-card.right { background: #dff2e3; border-color: #4f9d69; }
+.word-card.wrong { opacity: 0.4; }
+.word-card.placed { opacity: 0.3; }
+.sentence-line { display: flex; gap: 10px; justify-content: center; min-height: 60px; }
+.sentence-line:empty { display: none; }
+.sentence-line .gap { min-width: 100px; min-height: 56px; border-bottom: 4px dashed #cdbf9f; font-family: var(--kana); font-size: 32px; display: flex; align-items: center; justify-content: center; }
+.sentence-line .gap.on { border-bottom-color: #4f9d69; }
+
+/* my family */
+.view.town-lesson.mine { gap: 10px; }
+.mine-body { display: flex; gap: 26px; align-items: flex-start; }
+.mine-steppers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: 560px; }
+.mine-row { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 14px; padding: 4px 10px; box-shadow: var(--shadow); opacity: 0.75; }
+.mine-row.on { opacity: 1; }
+.mine-pic { width: 56px; height: 56px; }
+.mine-pic svg { width: 100%; height: 100%; }
+.mine-name { display: flex; flex-direction: column; flex: 1; }
+.mine-name .kana { font-size: 20px; }
+.mine-name small { font-size: 15px; color: var(--ink-soft); }
+.step-btn { width: 56px; height: 56px; border-radius: 50%; font-size: 30px; font-weight: 800; background: var(--paper); color: var(--ink); border: none; }
+.step-btn:disabled { opacity: 0.3; }
+.mine-n { font-size: 24px; font-weight: 800; width: 22px; text-align: center; }
+.mine-right { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 600px; }
+.mine-preview { min-height: 380px; display: flex; align-items: center; }
+.screen.town-done { align-items: center; justify-content: center; gap: 24px; }
+.screen.town-show .family-tree { margin: 0 auto; }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+.family-tree.compact .member-pic { width: calc(var(--w) * 0.7); height: calc(var(--w) * 0.7); }
+.family-tree.compact .member-label { min-height: 40px; }
+.family-tree.compact .member-label small { display: none; }
+.family-tree.compact .tree-row { gap: 4px; }
+.family-tree.compact .member-label { height: 40px; min-height: 0; box-sizing: border-box; }
+.word-tray.tight { gap: 10px; flex-wrap: nowrap; }
+.word-tray.tight .word-card { min-width: 0; padding: 0 12px; font-size: 26px; }
+.mine-steppers { grid-template-columns: 1fr; width: 500px; gap: 6px; }
+.mine-row { padding: 2px 10px; min-height: 60px; }
+.mine-pic { width: 50px; height: 50px; }
+.mine-name { flex-direction: row; align-items: baseline; gap: 10px; }
+.mine-name .kana { font-size: 22px; }
+.mine-right { width: 660px; }
+.family-tree:not(.compact):not(.small) .member-label { height: 54px; min-height: 0; box-sizing: border-box; }

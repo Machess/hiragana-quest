@@ -42,14 +42,20 @@ def finish(wav, out):
       f'{CHAIN},volume={gain:.2f}dB,alimiter=limit=0.89:level=false', '-ac', '1', '-ar', '24000', '-b:a', '64k', out], check=True)
     return vol(out)
 
-lines = json.load(open('/home/claude/tools/mochi_lines.json'))
-only = set(sys.argv[1].split(',')) if len(sys.argv) > 1 else None
+base = json.load(open('/home/claude/tools/mochi_lines.json'))
+# Mochi's Town: every line is new (Japanese and English made here). Chunks have no English audio.
+town = [dict(L, new=True) for L in json.load(open('/home/claude/tools/town_family.json'))]
+lines = base + town
+arg = sys.argv[1] if len(sys.argv) > 1 else ''
+only = {L['id'] for L in town} if arg == 'town' else (set(arg.split(',')) if arg else None)
 os.makedirs(f'{OUT}/en', exist_ok=True)
 for L in lines:
     if only and L['id'] not in only: continue
     if L.get('new'):
-        q = syn.create_audio_query(L['ja'], MOCHI); q.intonation_scale = 1.3; q.volume_scale = 1.4
+        q = (syn.create_audio_query_from_kana(L['kana'], MOCHI) if L.get('kana') else syn.create_audio_query(L['ja'].replace(' ', ''), MOCHI)); q.intonation_scale = 1.3   # spaces are for reading, not pauses; q.volume_scale = 1.4
+        if len(L['ja']) > 8: q.speed_scale = 0.92          # sentences: unhurried
         print(L['id'], 'ja', finish(syn.synthesis(q, MOCHI), f"{OUT}/{L['id']}.mp3"))
+    if L.get('noecho'): continue
     soften = len(L['kk'].split()) >= 3
     wav, k = synth(L['kk'], soften)
     print(L['id'], 'en', k, 'soft' if soften else '', finish(wav, f"{OUT}/en/{L['id']}.mp3"))
